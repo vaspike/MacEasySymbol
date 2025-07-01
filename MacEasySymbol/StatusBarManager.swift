@@ -10,6 +10,7 @@ import Cocoa
 protocol StatusBarManagerDelegate: AnyObject {
     func statusBarManager(_ manager: StatusBarManager, didToggleIntervention enabled: Bool)
     func statusBarManagerDidRequestQuit(_ manager: StatusBarManager)
+    func statusBarManagerDidRequestHotkeySettings(_ manager: StatusBarManager)
 }
 
 class StatusBarManager: NSObject {
@@ -80,6 +81,16 @@ class StatusBarManager: NSObject {
         DebugLogger.log("🧹 StatusBarManager 清理完成")
     }
     
+    // 公开的切换方法，供外部调用（如全局快捷键）
+    func toggleInterventionMode() {
+        isInterventionEnabled.toggle()
+        delegate?.statusBarManager(self, didToggleIntervention: isInterventionEnabled)
+        
+        // 保存用户偏好
+        UserDefaults.standard.set(isInterventionEnabled, forKey: "InterventionEnabled")
+        DebugLogger.log("🔄 通过全局快捷键切换介入模式: \(isInterventionEnabled ? "启用" : "禁用")")
+    }
+    
     // MARK: - Private Methods
     
     private func updateStatusBarIcon() {
@@ -122,6 +133,13 @@ class StatusBarManager: NSObject {
         let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(toggleIntervention), keyEquivalent: "")
         toggleItem.target = self
         menu.addItem(toggleItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        // 全局快捷键设置
+        let hotkeyItem = NSMenuItem(title: "全局快捷键", action: #selector(showHotkeySettings), keyEquivalent: "")
+        hotkeyItem.target = self
+        menu.addItem(hotkeyItem)
         
         menu.addItem(NSMenuItem.separator())
         
@@ -198,6 +216,10 @@ class StatusBarManager: NSObject {
             alert.addButton(withTitle: "确定")
             alert.runModal()
         }
+    }
+    
+    @objc private func showHotkeySettings() {
+        delegate?.statusBarManagerDidRequestHotkeySettings(self)
     }
     
     @objc private func quitApp() {

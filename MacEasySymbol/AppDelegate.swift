@@ -7,6 +7,7 @@
 
 import Cocoa
 import ApplicationServices
+import Carbon
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     
@@ -14,6 +15,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var keyboardMonitor: KeyboardEventMonitor?
     private var symbolConverter: SymbolConverter?
     private var permissionManager: PermissionManager?
+    private var globalHotkeyManager: GlobalHotkeyManager?
+    private var hotkeySettingsWindow: HotkeySettingsWindow?
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // 设置为Agent应用，隐藏Dock图标
@@ -45,15 +48,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         symbolConverter = SymbolConverter()
         keyboardMonitor = KeyboardEventMonitor()
         statusBarManager = StatusBarManager()
+        globalHotkeyManager = GlobalHotkeyManager()
         
         // 设置委托关系
         keyboardMonitor?.delegate = symbolConverter
         statusBarManager?.delegate = self
+        globalHotkeyManager?.delegate = self
         
         // 强制设置为启用状态，每次启动都启用
         symbolConverter?.setInterventionEnabled(true)
         // 同时更新UserDefaults，确保状态栏也显示为启用状态
         UserDefaults.standard.set(true, forKey: "InterventionEnabled")
+        
+        // 注册默认全局快捷键
+        globalHotkeyManager?.registerDefaultHotkey()
     }
     
     private func checkAndRequestPermissions() {
@@ -91,14 +99,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 3. 清理状态栏
         statusBarManager = nil
         
-        // 4. 清理所有委托关系，避免循环引用
+        // 4. 清理全局快捷键
+        globalHotkeyManager?.unregisterCurrentHotkey()
+        
+        // 5. 清理所有委托关系，避免循环引用
         keyboardMonitor?.delegate = nil
         statusBarManager?.delegate = nil
+        globalHotkeyManager?.delegate = nil
         
-        // 5. 释放组件
+        // 6. 释放组件
         keyboardMonitor = nil
         symbolConverter = nil
         permissionManager = nil
+        globalHotkeyManager = nil
+        hotkeySettingsWindow = nil
         
         // 6. 强制垃圾回收（仅用于调试，生产环境中系统会自动管理）
         #if DEBUG
@@ -150,10 +164,67 @@ extension AppDelegate: StatusBarManagerDelegate {
         }
     }
     
+    func statusBarManagerDidRequestHotkeySettings(_ manager: StatusBarManager) {
+        showHotkeySettingsWindow()
+    }
+    
     func statusBarManagerDidRequestQuit(_ manager: StatusBarManager) {
         // 确保在退出前完整清理资源
         cleanupResources()
         NSApplication.shared.terminate(self)
+    }
+}
+
+// MARK: - GlobalHotkeyDelegate
+
+extension AppDelegate: GlobalHotkeyDelegate {
+    func globalHotkeyDidTrigger() {
+        // 切换介入模式
+        guard let statusBarManager = statusBarManager else { return }
+        statusBarManager.toggleInterventionMode()
+        DebugLogger.log("🔥 全局快捷键触发，切换介入模式")
+    }
+}
+
+// MARK: - HotkeySettingsDelegate
+
+extension AppDelegate: HotkeySettingsDelegate {
+    func hotkeySettingsDidSave(keyCode: UInt32, modifiers: UInt32) {
+        globalHotkeyManager?.registerHotkey(keyCode: keyCode, modifiers: modifiers)
+        hotkeySettingsWindow = nil
+        DebugLogger.log("✅ 全局快捷键设置已保存")
+    }
+    
+    func hotkeySettingsDidCancel() {
+        hotkeySettingsWindow = nil
+        DebugLogger.log("❌ 全局快捷键设置已取消")
+    }
+}
+
+// MARK: - Helper Methods for Hotkey Settings
+
+extension AppDelegate {
+    private func showHotkeySettingsWindow() {
+        // 如果窗口已存在，激活它
+        if let existingWindow = hotkeySettingsWindow {
+            existingWindow.showWindow(self)
+            existingWindow.window?.makeKeyAndOrderFront(self)
+            return
+        }
+        
+        // 创建新窗口
+        hotkeySettingsWindow = HotkeySettingsWindow()
+        hotkeySettingsWindow?.delegate = self
+        
+        // 设置当前快捷键值
+        if let manager = globalHotkeyManager {
+            let currentKeyCode = UserDefaults.standard.object(forKey: "GlobalHotkeyKeyCode") as? UInt32 ?? 17
+            let currentModifiers = UserDefaults.standard.object(forKey: "GlobalHotkeyModifiers") as? UInt32 ?? UInt32(cmdKey | shiftKey)
+            hotkeySettingsWindow?.setCurrentHotkey(keyCode: currentKeyCode, modifiers: currentModifiers)
+        }
+        
+        hotkeySettingsWindow?.showWindow(self)
+        hotkeySettingsWindow?.window?.makeKeyAndOrderFront(self)
     }
 }
 
