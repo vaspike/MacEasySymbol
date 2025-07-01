@@ -9,7 +9,7 @@ import Cocoa
 import ApplicationServices
 import Carbon
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
     
     private var statusBarManager: StatusBarManager?
     private var keyboardMonitor: KeyboardEventMonitor?
@@ -22,6 +22,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 设置为Agent应用，隐藏Dock图标
         NSApp.setActivationPolicy(.accessory)
         
+        // 检查是否需要重启提醒
+        checkRestartReminder()
+        
         // 初始化组件
         setupComponents()
         
@@ -30,6 +33,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 检查并请求权限
         checkAndRequestPermissions()
+    }
+    
+    private func checkRestartReminder() {
+        if UserDefaults.standard.bool(forKey: "NeedsRestartForPermission") {
+            // 清除标记
+            UserDefaults.standard.removeObject(forKey: "NeedsRestartForPermission")
+            
+            // 再次检查权限状态
+            if PermissionManager.hasAccessibilityPermission() {
+                DebugLogger.log("✅ 权限已生效，清除重启提醒")
+            } else {
+                // 权限仍未生效，显示重启提醒
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.showDelayedRestartReminder()
+                }
+            }
+        }
+    }
+    
+    private func showDelayedRestartReminder() {
+        let alert = NSAlert()
+        alert.messageText = "建议重启应用"
+        alert.informativeText = "为确保辅助功能权限完全生效，建议现在重启应用。"
+        alert.addButton(withTitle: "立即重启")
+        alert.addButton(withTitle: "跳过")
+        alert.alertStyle = .informational
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            restartApplication()
+        }
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
@@ -54,6 +88,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         keyboardMonitor?.delegate = symbolConverter
         statusBarManager?.delegate = self
         globalHotkeyManager?.delegate = self
+        permissionManager?.delegate = self
         
         // 强制设置为启用状态，每次启动都启用
         symbolConverter?.setInterventionEnabled(true)
@@ -127,13 +162,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showPermissionAlert() {
         let alert = NSAlert()
         alert.messageText = "需要辅助功能权限"
-        alert.informativeText = "SymbolFlow 需要访问辅助功能权限来监听键盘事件。请在\"系统偏好设置\" > \"安全性与隐私\" > \"辅助功能\"中勾选本应用。"
+        alert.informativeText = "MacEasySymbol 需要访问辅助功能权限来监听键盘事件。请在\"系统偏好设置\" > \"安全性与隐私\" > \"辅助功能\"中勾选本应用。"
         alert.addButton(withTitle: "打开系统偏好设置")
         alert.addButton(withTitle: "稍后设置")
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
+            // 打开系统偏好设置
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+            
+            // 开始监控权限变化
+            permissionManager?.startMonitoringPermissions()
+            DebugLogger.log("🔍 用户点击打开系统偏好设置，开始监控权限变化")
         }
     }
     
@@ -229,6 +269,61 @@ extension AppDelegate {
         
         hotkeySettingsWindow?.showWindow(self)
         hotkeySettingsWindow?.window?.makeKeyAndOrderFront(self)
+    }
+}
+
+// MARK: - PermissionManagerDelegate
+
+extension AppDelegate {
+    func permissionManagerDidDetectPermissionGranted() {
+        DebugLogger.log("🎉 检测到辅助功能权限已授予，准备重启应用")
+        showRestartAlert()
+    }
+    
+    private func showRestartAlert() {
+        let alert = NSAlert()
+        alert.messageText = "权限授予成功"
+        alert.informativeText = "辅助功能权限已成功授予。为确保权限完全生效，应用需要重启。"
+        alert.addButton(withTitle: "立即重启")
+        alert.addButton(withTitle: "稍后重启")
+        alert.alertStyle = .informational
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            restartApplication()
+        } else {
+            // 用户选择稍后重启，设置标记下次启动时提醒
+            UserDefaults.standard.set(true, forKey: "NeedsRestartForPermission")
+            DebugLogger.log("📝 用户选择稍后重启，已设置重启提醒标记")
+        }
+    }
+    
+    private func restartApplication() {
+        DebugLogger.log("🔄 开始重启应用...")
+        
+        // 清理资源
+        cleanupResources()
+        
+        // 获取应用Bundle路径
+        let bundlePath = Bundle.main.bundlePath
+        
+        // 使用open命令重启应用
+        let task = Process()
+        task.launchPath = "/usr/bin/open"
+        task.arguments = [bundlePath]
+        
+        // 延迟启动，确保当前应用完全退出
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            do {
+                try task.run()
+                DebugLogger.log("✅ 重启命令已执行")
+                
+                // 退出当前应用
+                NSApplication.shared.terminate(nil)
+            } catch {
+                DebugLogger.logError("❌ 重启应用失败: \(error.localizedDescription)")
+            }
+        }
     }
 }
 
