@@ -189,10 +189,13 @@ extension AppDelegate: GlobalHotkeyDelegate {
 // MARK: - HotkeySettingsDelegate
 
 extension AppDelegate: HotkeySettingsDelegate {
-    func hotkeySettingsDidSave(keyCode: UInt32, modifiers: UInt32) {
-        globalHotkeyManager?.registerHotkey(keyCode: keyCode, modifiers: modifiers)
+    func hotkeySettingsDidSave(keyCode: UInt32, modifiers: UInt32, isEnabled: Bool) {
+        globalHotkeyManager?.setEnabled(isEnabled)
+        if isEnabled {
+            globalHotkeyManager?.registerHotkey(keyCode: keyCode, modifiers: modifiers)
+        }
         hotkeySettingsWindow = nil
-        DebugLogger.log("✅ 全局快捷键设置已保存")
+        DebugLogger.log("✅ 全局快捷键设置已保存: 启用=\(isEnabled)")
     }
     
     func hotkeySettingsDidCancel() {
@@ -220,7 +223,8 @@ extension AppDelegate {
         if let manager = globalHotkeyManager {
             let currentKeyCode = UserDefaults.standard.object(forKey: "GlobalHotkeyKeyCode") as? UInt32 ?? 1
             let currentModifiers = UserDefaults.standard.object(forKey: "GlobalHotkeyModifiers") as? UInt32 ?? UInt32(cmdKey | optionKey)
-            hotkeySettingsWindow?.setCurrentHotkey(keyCode: currentKeyCode, modifiers: currentModifiers)
+            let isEnabled = manager.getEnabled()
+            hotkeySettingsWindow?.setCurrentHotkey(keyCode: currentKeyCode, modifiers: currentModifiers, isEnabled: isEnabled)
         }
         
         hotkeySettingsWindow?.showWindow(self)

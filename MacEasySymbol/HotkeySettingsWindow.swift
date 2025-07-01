@@ -2,7 +2,7 @@ import Cocoa
 import Carbon
 
 protocol HotkeySettingsDelegate: AnyObject {
-    func hotkeySettingsDidSave(keyCode: UInt32, modifiers: UInt32)
+    func hotkeySettingsDidSave(keyCode: UInt32, modifiers: UInt32, isEnabled: Bool)
     func hotkeySettingsDidCancel()
 }
 
@@ -13,18 +13,20 @@ class HotkeySettingsWindow: NSWindowController {
     private var modifierPopup: NSPopUpButton!
     private var keyPopup: NSPopUpButton!
     private var previewLabel: NSTextField!
+    private var enableCheckbox: NSButton!
     private var saveButton: NSButton!
     private var cancelButton: NSButton!
     
     private var selectedModifiers: UInt32 = UInt32(cmdKey | optionKey)
     private var selectedKeyCode: UInt32 = 1 // S键
+    private var isHotkeyEnabled: Bool = true
     
     // MARK: - Init
     
     convenience init() {
         // 创建窗口
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 280),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 320),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -74,6 +76,9 @@ class HotkeySettingsWindow: NSWindowController {
         // 按键选择
         let keyContainer = createKeySelector()
         
+        // 禁用选项
+        let enableContainer = createEnableSection()
+        
         // 预览
         let previewContainer = createPreviewSection()
         
@@ -84,6 +89,7 @@ class HotkeySettingsWindow: NSWindowController {
         stackView.addArrangedSubview(titleLabel)
         stackView.addArrangedSubview(modifierContainer)
         stackView.addArrangedSubview(keyContainer)
+        stackView.addArrangedSubview(enableContainer)
         stackView.addArrangedSubview(previewContainer)
         stackView.addArrangedSubview(buttonContainer)
         
@@ -181,6 +187,26 @@ class HotkeySettingsWindow: NSWindowController {
         return container
     }
     
+    private func createEnableSection() -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        enableCheckbox = NSButton(checkboxWithTitle: "启用全局快捷键", target: self, action: #selector(enableCheckboxChanged))
+        enableCheckbox.translatesAutoresizingMaskIntoConstraints = false
+        enableCheckbox.state = isHotkeyEnabled ? .on : .off
+        
+        container.addSubview(enableCheckbox)
+        
+        NSLayoutConstraint.activate([
+            enableCheckbox.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            enableCheckbox.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            container.heightAnchor.constraint(equalToConstant: 30)
+        ])
+        
+        return container
+    }
+    
     private func createPreviewSection() -> NSView {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -267,8 +293,13 @@ class HotkeySettingsWindow: NSWindowController {
         updatePreview()
     }
     
+    @objc private func enableCheckboxChanged() {
+        isHotkeyEnabled = enableCheckbox.state == .on
+        updateUI()
+    }
+    
     @objc private func saveClicked() {
-        delegate?.hotkeySettingsDidSave(keyCode: selectedKeyCode, modifiers: selectedModifiers)
+        delegate?.hotkeySettingsDidSave(keyCode: selectedKeyCode, modifiers: selectedModifiers, isEnabled: isHotkeyEnabled)
         close()
     }
     
@@ -278,6 +309,16 @@ class HotkeySettingsWindow: NSWindowController {
     }
     
     // MARK: - Helper Methods
+    
+    private func updateUI() {
+        // 根据启用状态控制UI元素的可用性
+        modifierPopup.isEnabled = isHotkeyEnabled
+        keyPopup.isEnabled = isHotkeyEnabled
+        previewLabel.isEnabled = isHotkeyEnabled
+        
+        // 更新预览
+        updatePreview()
+    }
     
     private func updatePreview() {
         let keyString = keyCodeToString(selectedKeyCode)
@@ -310,9 +351,10 @@ class HotkeySettingsWindow: NSWindowController {
     }
     
     // 设置当前快捷键（用于编辑现有快捷键）
-    func setCurrentHotkey(keyCode: UInt32, modifiers: UInt32) {
+    func setCurrentHotkey(keyCode: UInt32, modifiers: UInt32, isEnabled: Bool = true) {
         selectedKeyCode = keyCode
         selectedModifiers = modifiers
+        isHotkeyEnabled = isEnabled
         
         // 更新UI选择
         let modifiersList = GlobalHotkeyManager.getAvailableModifiers()
@@ -325,7 +367,10 @@ class HotkeySettingsWindow: NSWindowController {
             keyPopup.selectItem(at: keyIndex)
         }
         
-        updatePreview()
+        // 更新复选框状态
+        enableCheckbox.state = isHotkeyEnabled ? .on : .off
+        
+        updateUI()
     }
 }
 

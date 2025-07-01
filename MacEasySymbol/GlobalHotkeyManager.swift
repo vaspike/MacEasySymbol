@@ -11,6 +11,7 @@ class GlobalHotkeyManager {
     
     private var hotKeyRef: EventHotKeyRef?
     private var isHotkeyRegistered: Bool = false
+    private var isEnabled: Bool = true
     
     // 默认快捷键：Command + Option + S (Symbol)
     private var currentKeyCode: UInt32 = 1 // S键
@@ -20,7 +21,13 @@ class GlobalHotkeyManager {
     
     init() {
         loadSavedHotkey()
+        loadEnabledState()
         setupEventHandler()
+        
+        // 如果启用，注册默认快捷键
+        if isEnabled {
+            registerDefaultHotkey()
+        }
     }
     
     deinit {
@@ -138,10 +145,41 @@ class GlobalHotkeyManager {
     
     // MARK: - Settings Management
     
+    func setEnabled(_ enabled: Bool) {
+        if isEnabled != enabled {
+            isEnabled = enabled
+            saveEnabledState()
+            
+            if enabled {
+                registerDefaultHotkey()
+            } else {
+                unregisterCurrentHotkey()
+            }
+        }
+    }
+    
+    func getEnabled() -> Bool {
+        return isEnabled
+    }
+    
     private func saveHotkeySettings() {
         UserDefaults.standard.set(currentKeyCode, forKey: "GlobalHotkeyKeyCode")
         UserDefaults.standard.set(currentModifiers, forKey: "GlobalHotkeyModifiers")
         DebugLogger.log("💾 全局快捷键设置已保存")
+    }
+    
+    private func saveEnabledState() {
+        UserDefaults.standard.set(isEnabled, forKey: "GlobalHotkeyEnabled")
+        DebugLogger.log("💾 全局快捷键启用状态已保存: \(isEnabled)")
+    }
+    
+    private func loadEnabledState() {
+        if UserDefaults.standard.object(forKey: "GlobalHotkeyEnabled") != nil {
+            isEnabled = UserDefaults.standard.bool(forKey: "GlobalHotkeyEnabled")
+            DebugLogger.log("📖 已加载保存的启用状态: \(isEnabled)")
+        } else {
+            DebugLogger.log("📖 使用默认启用状态: \(isEnabled)")
+        }
     }
     
     private func loadSavedHotkey() {
