@@ -30,8 +30,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
-        // 停止键盘监听
-        keyboardMonitor?.stopMonitoring()
+        // 完整的清理流程
+        cleanupResources()
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
@@ -77,6 +77,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         keyboardMonitor?.startMonitoring()
     }
     
+    // 完整的资源清理方法
+    private func cleanupResources() {
+        DebugLogger.log("🧹 开始清理应用资源...")
+        
+        // 1. 停止键盘监听
+        keyboardMonitor?.stopMonitoring()
+        DebugLogger.log("✅ 键盘监听已停止")
+        
+        // 2. 清理符号转换器的缓存
+        symbolConverter?.cleanup()
+        
+        // 3. 清理状态栏
+        statusBarManager = nil
+        
+        // 4. 清理所有委托关系，避免循环引用
+        keyboardMonitor?.delegate = nil
+        statusBarManager?.delegate = nil
+        
+        // 5. 释放组件
+        keyboardMonitor = nil
+        symbolConverter = nil
+        permissionManager = nil
+        
+        // 6. 强制垃圾回收（仅用于调试，生产环境中系统会自动管理）
+        #if DEBUG
+        autoreleasepool {
+            // 在调试模式下执行额外的清理
+        }
+        #endif
+        
+        DebugLogger.log("✅ 应用资源清理完成")
+    }
+    
     private func showPermissionAlert() {
         let alert = NSAlert()
         alert.messageText = "需要辅助功能权限"
@@ -88,6 +121,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if response == .alertFirstButtonReturn {
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
         }
+    }
+    
+    // 添加内存警告处理
+    func applicationDidReceiveMemoryWarning(_ application: NSApplication) {
+        DebugLogger.log("⚠️ 收到内存警告，执行内存清理...")
+        
+        // 清理符号转换器的缓存
+        symbolConverter?.cleanup()
+        
+        // 强制执行一次垃圾回收
+        autoreleasepool {
+            // 清理临时对象
+        }
+        
+        DebugLogger.log("✅ 内存警告处理完成")
     }
 }
 
@@ -103,6 +151,8 @@ extension AppDelegate: StatusBarManagerDelegate {
     }
     
     func statusBarManagerDidRequestQuit(_ manager: StatusBarManager) {
+        // 确保在退出前完整清理资源
+        cleanupResources()
         NSApplication.shared.terminate(self)
     }
 }

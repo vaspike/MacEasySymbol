@@ -13,6 +13,12 @@ class SymbolConverter: KeyboardEventDelegate {
     
     private var isInterventionEnabled = true
     
+    // 缓存键盘输入源相关对象，避免频繁创建
+    private var cachedInputSource: TISInputSource?
+    private var cachedKeyboardLayout: UnsafePointer<UCKeyboardLayout>?
+    private var lastLayoutChangeTime: Date = Date()
+    private let cacheValidDuration: TimeInterval = 30.0 // 缓存30秒
+    
     // 按键码到符号的映射表（基于美式键盘布局）
     private let keyCodeToEnglishSymbol: [Int64: String] = [
         43: ",",    // 逗号键
@@ -89,6 +95,11 @@ class SymbolConverter: KeyboardEventDelegate {
 
     ]
     
+    // MARK: - 析构函数，清理缓存的资源
+    deinit {
+        clearKeyboardLayoutCache()
+    }
+    
     // MARK: - Public Methods
     
     func setInterventionEnabled(_ enabled: Bool) {
@@ -104,46 +115,10 @@ class SymbolConverter: KeyboardEventDelegate {
             return originalEvent
         }
         
-        // 先获取按键对应的字符，然后判断是否需要转换
-        // 移除对isSymbolKey的限制，让所有按键都经过检查
-        
-        // 获取当前按键对应的字符
-        let inputSource = TISCopyCurrentKeyboardLayoutInputSource().takeRetainedValue()
-        let layoutData = TISGetInputSourceProperty(inputSource, kTISPropertyUnicodeKeyLayoutData)
-        
-        guard let keyLayoutPtr = layoutData else {
+        // 获取当前按键对应的字符（使用缓存优化）
+        guard let inputString = getInputString(for: keyCode, flags: flags) else {
             return originalEvent
         }
-        
-        let keyLayout = Unmanaged<CFData>.fromOpaque(keyLayoutPtr).takeUnretainedValue()
-        let keyLayoutDataPtr = CFDataGetBytePtr(keyLayout)
-        
-        var deadKeyState: UInt32 = 0
-        var chars = [UniChar](repeating: 0, count: 4)
-        var actualLength = 0
-        
-        let modifierKeyState = UInt32((flags.rawValue >> 16) & 0xFF)
-        
-        let keyboardLayoutPtr = keyLayoutDataPtr?.withMemoryRebound(to: UCKeyboardLayout.self, capacity: 1) { $0 }
-        
-        let status = UCKeyTranslate(
-            keyboardLayoutPtr,
-            UInt16(keyCode),
-            UInt16(kUCKeyActionDown),
-            modifierKeyState,
-            UInt32(LMGetKbdType()),
-            OptionBits(kUCKeyTranslateNoDeadKeysBit),
-            &deadKeyState,
-            4,
-            &actualLength,
-            &chars
-        )
-        
-        guard status == noErr, actualLength > 0 else {
-            return originalEvent
-        }
-        
-        let inputString = String(utf16CodeUnits: chars, count: actualLength)
         
         // 特殊处理引号 - 当检测到任何引号时，统一输出英文引号
         if keyCode == 39 { // 引号键的keyCode是39
@@ -177,6 +152,79 @@ class SymbolConverter: KeyboardEventDelegate {
         return symbolKeyCodes.contains(keyCode)
     }
     
+    // 优化的获取输入字符串方法，使用缓存减少API调用
+    private func getInputString(for keyCode: Int64, flags: CGEventFlags) -> String? {
+        // 检查缓存是否需要更新
+        let now = Date()
+        if cachedKeyboardLayout == nil || now.timeIntervalSince(lastLayoutChangeTime) > cacheValidDuration {
+            updateKeyboardLayoutCache()
+        }
+        
+        guard let keyboardLayout = cachedKeyboardLayout else {
+            return nil
+        }
+        
+        var deadKeyState: UInt32 = 0
+        var chars = [UniChar](repeating: 0, count: 4)
+        var actualLength = 0
+        
+        let modifierKeyState = UInt32((flags.rawValue >> 16) & 0xFF)
+        
+        let status = UCKeyTranslate(
+            keyboardLayout,
+            UInt16(keyCode),
+            UInt16(kUCKeyActionDown),
+            modifierKeyState,
+            UInt32(LMGetKbdType()),
+            OptionBits(kUCKeyTranslateNoDeadKeysBit),
+            &deadKeyState,
+            4,
+            &actualLength,
+            &chars
+        )
+        
+        guard status == noErr, actualLength > 0 else {
+            return nil
+        }
+        
+        return String(utf16CodeUnits: chars, count: actualLength)
+    }
+    
+    // 更新键盘布局缓存
+    private func updateKeyboardLayoutCache() {
+        // 清理旧的缓存
+        clearKeyboardLayoutCache()
+        
+        // 获取新的输入源
+        cachedInputSource = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue()
+        
+        guard let inputSource = cachedInputSource else {
+            return
+        }
+        
+        // 获取键盘布局数据
+        let layoutData = TISGetInputSourceProperty(inputSource, kTISPropertyUnicodeKeyLayoutData)
+        
+        guard let keyLayoutPtr = layoutData else {
+            return
+        }
+        
+        let keyLayout = Unmanaged<CFData>.fromOpaque(keyLayoutPtr).takeUnretainedValue()
+        let keyLayoutDataPtr = CFDataGetBytePtr(keyLayout)
+        
+        cachedKeyboardLayout = keyLayoutDataPtr?.withMemoryRebound(to: UCKeyboardLayout.self, capacity: 1) { $0 }
+        lastLayoutChangeTime = Date()
+        
+        DebugLogger.log("🔄 键盘布局缓存已更新")
+    }
+    
+    // 清理键盘布局缓存
+    private func clearKeyboardLayoutCache() {
+        cachedKeyboardLayout = nil
+        // 注意：cachedInputSource 是通过 takeRetainedValue() 获取的，ARC会自动管理
+        cachedInputSource = nil
+    }
+    
     private func createEventForSymbol(_ symbol: String, originalEvent: CGEvent) -> CGEvent? {
         guard let mapping = symbolMappings[symbol] else {
             return originalEvent
@@ -205,5 +253,11 @@ class SymbolConverter: KeyboardEventDelegate {
         DebugLogger.log("🔄 符号转换: 输出英文符号 '\(symbol)'")
         
         return event
+    }
+    
+    // 添加手动清理方法，供外部调用
+    func cleanup() {
+        clearKeyboardLayoutCache()
+        DebugLogger.log("🧹 SymbolConverter 内存清理完成")
     }
 } 
