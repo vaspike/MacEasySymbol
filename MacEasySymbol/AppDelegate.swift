@@ -218,8 +218,8 @@ extension AppDelegate {
         
         // 设置当前快捷键值
         if let manager = globalHotkeyManager {
-            let currentKeyCode = UserDefaults.standard.object(forKey: "GlobalHotkeyKeyCode") as? UInt32 ?? 17
-            let currentModifiers = UserDefaults.standard.object(forKey: "GlobalHotkeyModifiers") as? UInt32 ?? UInt32(cmdKey | shiftKey)
+            let currentKeyCode = UserDefaults.standard.object(forKey: "GlobalHotkeyKeyCode") as? UInt32 ?? 1
+            let currentModifiers = UserDefaults.standard.object(forKey: "GlobalHotkeyModifiers") as? UInt32 ?? UInt32(cmdKey | optionKey)
             hotkeySettingsWindow?.setCurrentHotkey(keyCode: currentKeyCode, modifiers: currentModifiers)
         }
         

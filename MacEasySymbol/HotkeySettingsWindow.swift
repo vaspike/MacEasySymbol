@@ -16,8 +16,8 @@ class HotkeySettingsWindow: NSWindowController {
     private var saveButton: NSButton!
     private var cancelButton: NSButton!
     
-    private var selectedModifiers: UInt32 = UInt32(cmdKey | shiftKey)
-    private var selectedKeyCode: UInt32 = 17 // T键
+    private var selectedModifiers: UInt32 = UInt32(cmdKey | optionKey)
+    private var selectedKeyCode: UInt32 = 1 // S键
     
     // MARK: - Init
     
@@ -116,7 +116,7 @@ class HotkeySettingsWindow: NSWindowController {
         }
         
         // 设置默认选择
-        modifierPopup.selectItem(at: 4) // 默认选择 Cmd+Shift
+        modifierPopup.selectItem(at: 5) // 默认选择 Cmd+Option
         modifierPopup.target = self
         modifierPopup.action = #selector(modifierChanged)
         
@@ -155,9 +155,9 @@ class HotkeySettingsWindow: NSWindowController {
             keyPopup.lastItem?.representedObject = key.code
         }
         
-        // 设置默认选择 T
-        if let tIndex = keys.firstIndex(where: { $0.code == 17 }) {
-            keyPopup.selectItem(at: tIndex)
+        // 设置默认选择 S
+        if let sIndex = keys.firstIndex(where: { $0.code == 1 }) {
+            keyPopup.selectItem(at: sIndex)
         }
         
         keyPopup.target = self

@@ -12,9 +12,9 @@ class GlobalHotkeyManager {
     private var hotKeyRef: EventHotKeyRef?
     private var isHotkeyRegistered: Bool = false
     
-    // 默认快捷键：Command + Shift + T
-    private var currentKeyCode: UInt32 = 17 // T键
-    private var currentModifiers: UInt32 = UInt32(cmdKey | shiftKey)
+    // 默认快捷键：Command + Option + S (Symbol)
+    private var currentKeyCode: UInt32 = 1 // S键
+    private var currentModifiers: UInt32 = UInt32(cmdKey | optionKey)
     
     private let hotkeyID: EventHotKeyID = EventHotKeyID(signature: OSType(0x74747474), id: 1) // 'tttt'
     
