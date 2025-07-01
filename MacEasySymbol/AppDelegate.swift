@@ -60,8 +60,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 同时更新UserDefaults，确保状态栏也显示为启用状态
         UserDefaults.standard.set(true, forKey: "InterventionEnabled")
         
-        // 注册默认全局快捷键
-        globalHotkeyManager?.registerDefaultHotkey()
+        // GlobalHotkeyManager会根据保存的启用状态自动决定是否注册快捷键
+        // 无需手动调用registerDefaultHotkey()
     }
     
     private func checkAndRequestPermissions() {

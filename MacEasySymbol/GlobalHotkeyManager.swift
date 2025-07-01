@@ -11,7 +11,7 @@ class GlobalHotkeyManager {
     
     private var hotKeyRef: EventHotKeyRef?
     private var isHotkeyRegistered: Bool = false
-    private var isEnabled: Bool = true
+    private var isEnabled: Bool = false  // 默认禁用快捷键
     
     // 默认快捷键：Command + Option + S (Symbol)
     private var currentKeyCode: UInt32 = 1 // S键

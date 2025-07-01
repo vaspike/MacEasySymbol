@@ -19,7 +19,7 @@ class HotkeySettingsWindow: NSWindowController {
     
     private var selectedModifiers: UInt32 = UInt32(cmdKey | optionKey)
     private var selectedKeyCode: UInt32 = 1 // S键
-    private var isHotkeyEnabled: Bool = true
+    private var isHotkeyEnabled: Bool = false  // 默认禁用快捷键
     
     // MARK: - Init
     
