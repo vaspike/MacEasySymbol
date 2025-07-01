@@ -50,9 +50,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         keyboardMonitor?.delegate = symbolConverter
         statusBarManager?.delegate = self
         
-        // 同步初始状态
-        let isEnabled = UserDefaults.standard.object(forKey: "InterventionEnabled") as? Bool ?? true
-        symbolConverter?.setInterventionEnabled(isEnabled)
+        // 强制设置为启用状态，每次启动都启用
+        symbolConverter?.setInterventionEnabled(true)
+        // 同时更新UserDefaults，确保状态栏也显示为启用状态
+        UserDefaults.standard.set(true, forKey: "InterventionEnabled")
     }
     
     private func checkAndRequestPermissions() {

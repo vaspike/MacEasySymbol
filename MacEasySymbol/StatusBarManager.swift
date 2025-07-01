@@ -25,9 +25,11 @@ class StatusBarManager: NSObject {
     }
     
     override init() {
-        // 从UserDefaults加载保存的设置，默认为true（介入模式）
-        self.isInterventionEnabled = UserDefaults.standard.object(forKey: "InterventionEnabled") as? Bool ?? true
+        // 每次启动都强制设置为启用状态
+        self.isInterventionEnabled = true
         super.init()
+        // 确保UserDefaults也设置为启用状态
+        UserDefaults.standard.set(true, forKey: "InterventionEnabled")
     }
     
     // MARK: - Public Methods
