@@ -95,6 +95,13 @@ class StatusBarManager: NSObject {
         
         menu.addItem(NSMenuItem.separator())
         
+        // 关于
+        let aboutItem = NSMenuItem(title: "关于", action: #selector(showAbout), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
         // 退出
         let quitItem = NSMenuItem(title: "退出", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
@@ -152,5 +159,31 @@ class StatusBarManager: NSObject {
     
     @objc private func quitApp() {
         delegate?.statusBarManagerDidRequestQuit(self)
+    }
+    
+    @objc private func showAbout() {
+        let alert = NSAlert()
+        alert.messageText = "MacEasySymbol"
+        alert.informativeText = """
+        开源版本: 1.0.0
+        
+        作者: River
+        
+        版权 © 2025 River 毛小川. 保留所有权利。
+        
+        GitHub: https://github.com/vaspike/MacEasySymbol
+        
+        一个帮助使用原生中文输入法的用户自动转换符号的 macOS 应用。
+        """
+        alert.addButton(withTitle: "访问 GitHub")
+        alert.addButton(withTitle: "确定")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // 打开 GitHub 链接
+            if let url = URL(string: "https://github.com/vaspike/MacEasySymbol") {
+                NSWorkspace.shared.open(url)
+            }
+        }
     }
 } 
