@@ -82,6 +82,14 @@ MacEasySymbol 需要以下权限才能正常工作：
 
 ## 版本历史
 
+### v1.1.0 (2025-01-20)
+- ✨ 新增全局快捷键功能（默认 ⌘⌥S）
+- 🔄 权限授予后自动重启提醒功能
+- 📊 完善的内存监控和调试日志系统
+- 🛡️ 日志输出仅在DEBUG模式下启用
+- 🎯 快捷键功能默认禁用，需手动启用
+- 🧹 优化内存管理，修复潜在内存泄漏
+
 ### v1.0.0 (2025-07-01)
 - ✨ 初始版本发布
 - 🔄 支持 20+ 种中文符号转换
@@ -89,20 +97,15 @@ MacEasySymbol 需要以下权限才能正常工作：
 - 🖱️ 状态栏控制界面
 - 🔒 自动权限管理
 
+
+
 ## 贡献指南
 
 欢迎提交 Issue 和 Pull Request！
 
-## 许可证
-
-© 2025 River 毛小川. 保留所有权利。
 
 ## 联系方式
 
 - GitHub: [@vaspike](https://github.com/vaspike)
 - 项目地址: https://github.com/vaspike/MacEasySymbol
 - 邮箱: [rivermao@foxmail.com](mailto:rivermao@foxmail.com)
-
----
-
-**注意**: 这是一个开源项目，仅供学习和个人使用。请遵守相关法律法规和平台使用条款。 
