@@ -234,7 +234,7 @@ class StatusBarManager: NSObject {
             let alert = NSAlert()
             alert.messageText = "MacEasySymbol"
             alert.informativeText = """
-            当前版本: 1.1.0
+            当前版本: 1.1.2
             
             作者: River
             
