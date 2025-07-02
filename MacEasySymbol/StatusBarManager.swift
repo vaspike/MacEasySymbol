@@ -234,13 +234,9 @@ class StatusBarManager: NSObject {
             let alert = NSAlert()
             alert.messageText = "MacEasySymbol"
             alert.informativeText = """
-            开源版本: 1.0.0
+            当前版本: 1.1.0
             
             作者: River
-            
-            版权 © 2025 River 毛小川. 保留所有权利。
-            
-            GitHub: https://github.com/vaspike/MacEasySymbol
             
             一个帮助使用原生中文输入法的用户自动转换符号的 macOS 应用。
             """
