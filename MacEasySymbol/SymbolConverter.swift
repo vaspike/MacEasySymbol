@@ -24,8 +24,7 @@ class SymbolConverter: KeyboardEventDelegate {
         30: "]",    // 右方括号
         50: "`",    // 反引号
         42: "\\",   // 反斜杠
-        24: "=",    // 等号
-        27: "-",    // 减号
+        // 注意：移除了 24: "=" 和 27: "-"，让它们在中文输入法候选框中正常工作
     ]
     
     // 需要Shift的符号键映射
@@ -89,9 +88,8 @@ class SymbolConverter: KeyboardEventDelegate {
         "\\": (42, false),  // 反斜杠
         "|": (42, true),    // 竖线 (Shift + \)
         "_": (27, true),    // 下划线 (Shift + 减号)
-        "-": (27, false),   // 减号
-        "=": (24, false),   // 等号
         "+": (24, true),    // 加号 (Shift + 等号)
+        // 注意：移除了 "-" 和 "=" 的基础映射，保留 Shift 版本
     ]
     
     // 中文符号到英文符号的映射
