@@ -144,23 +144,35 @@ class SymbolConverter: KeyboardEventDelegate {
             return originalEvent
         }
         
-        // 判断是否按住了Shift键
-        let isShiftPressed = flags.contains(.maskShift)
+        // 检查修饰键：只允许无修饰键或仅有Shift键的情况
+        let hasCommand = flags.contains(.maskCommand)
+        let hasOption = flags.contains(.maskAlternate)
+        let hasControl = flags.contains(.maskControl)
+        let hasShift = flags.contains(.maskShift)
+        let hasFn = flags.contains(.maskSecondaryFn)
         
+        // 如果有Command、Option、Control或Fn键，直接返回原事件，不进行符号转换
+        guard !hasCommand && !hasOption && !hasControl && !hasFn else {
+            DebugLogger.log("⏭️ 检测到修饰键组合 (cmd:\(hasCommand), opt:\(hasOption), ctrl:\(hasControl), fn:\(hasFn))，跳过符号转换")
+            return originalEvent
+        }
+        
+        // 现在只可能是：无修饰键 或 仅有Shift键
         // 获取要输出的英文符号
         let englishSymbol: String
-        if isShiftPressed, let shiftSymbol = shiftSymbolKeyCodes[keyCode] {
+        if hasShift, let shiftSymbol = shiftSymbolKeyCodes[keyCode] {
             englishSymbol = shiftSymbol
-        } else if let basicSymbol = basicSymbolKeyCodes[keyCode] {
+        } else if !hasShift, let basicSymbol = basicSymbolKeyCodes[keyCode] {
             englishSymbol = basicSymbol
         } else {
+            // 这种情况不应该发生，但为了安全起见
             return originalEvent
         }
         
         // 创建新的键盘事件来输出英文符号
         let result = createEventForSymbol(englishSymbol, originalEvent: originalEvent)
         
-        DebugLogger.log("🔄 符号转换: keyCode=\(keyCode), shift=\(isShiftPressed), 输出='\(englishSymbol)'")
+        DebugLogger.log("🔄 符号转换: keyCode=\(keyCode), shift=\(hasShift), 输出='\(englishSymbol)'")
         
         return result
     }
