@@ -13,6 +13,11 @@ class SymbolConverter: KeyboardEventDelegate {
     
     private var isInterventionEnabled = true
     
+    // 用户配置：是否跳过方括号键的处理
+    private var skipBracketKeys: Bool {
+        return UserDefaults.standard.bool(forKey: "SkipBracketKeys")
+    }
+    
     // 基础符号键映射（无需Shift）
     private let basicSymbolKeyCodes: [Int64: String] = [
         43: ",",    // 逗号
@@ -152,6 +157,12 @@ class SymbolConverter: KeyboardEventDelegate {
         // 如果有Command、Option、Control或Fn键，直接返回原事件，不进行符号转换
         guard !hasCommand && !hasOption && !hasControl && !hasFn else {
             DebugLogger.log("⏭️ 检测到修饰键组合 (cmd:\(hasCommand), opt:\(hasOption), ctrl:\(hasControl), fn:\(hasFn))，跳过符号转换")
+            return originalEvent
+        }
+        
+        // 检查是否需要跳过方括号键（只对无修饰键的情况生效）
+        if skipBracketKeys && !hasShift && (keyCode == 33 || keyCode == 30) {
+            DebugLogger.log("⏭️ 根据用户配置跳过方括号键处理 (keyCode: \(keyCode))")
             return originalEvent
         }
         

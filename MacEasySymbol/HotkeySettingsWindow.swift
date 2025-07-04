@@ -14,19 +14,21 @@ class HotkeySettingsWindow: NSWindowController {
     private var keyPopup: NSPopUpButton!
     private var previewLabel: NSTextField!
     private var enableCheckbox: NSButton!
+    private var bracketKeysCheckbox: NSButton!
     private var saveButton: NSButton!
     private var cancelButton: NSButton!
     
     private var selectedModifiers: UInt32 = UInt32(cmdKey | optionKey)
     private var selectedKeyCode: UInt32 = 1 // S键
     private var isHotkeyEnabled: Bool = false  // 默认禁用快捷键
+    private var skipBracketKeys: Bool = false  // 默认不跳过方括号键
     
     // MARK: - Init
     
     convenience init() {
         // 创建窗口
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 320),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -34,6 +36,7 @@ class HotkeySettingsWindow: NSWindowController {
         
         self.init(window: window)
         setupWindow()
+        loadSavedSettings()
         setupUI()
     }
     
@@ -54,6 +57,12 @@ class HotkeySettingsWindow: NSWindowController {
         
         // 设置窗口委托以处理关闭事件
         window.delegate = self
+    }
+    
+    private func loadSavedSettings() {
+        // 加载方括号键配置
+        skipBracketKeys = UserDefaults.standard.bool(forKey: "SkipBracketKeys")
+        DebugLogger.log("📖 已加载方括号键配置: \(skipBracketKeys ? "跳过" : "处理")")
     }
     
     private func setupUI() {
@@ -79,6 +88,9 @@ class HotkeySettingsWindow: NSWindowController {
         // 禁用选项
         let enableContainer = createEnableSection()
         
+        // 方括号键配置
+        let bracketContainer = createBracketKeysSection()
+        
         // 预览
         let previewContainer = createPreviewSection()
         
@@ -90,6 +102,7 @@ class HotkeySettingsWindow: NSWindowController {
         stackView.addArrangedSubview(modifierContainer)
         stackView.addArrangedSubview(keyContainer)
         stackView.addArrangedSubview(enableContainer)
+        stackView.addArrangedSubview(bracketContainer)
         stackView.addArrangedSubview(previewContainer)
         stackView.addArrangedSubview(buttonContainer)
         
@@ -207,6 +220,52 @@ class HotkeySettingsWindow: NSWindowController {
         return container
     }
     
+    private func createBracketKeysSection() -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        // 主标题
+        let titleLabel = NSTextField(labelWithString: "中文输入法兼容选项")
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        
+        // 复选框
+        bracketKeysCheckbox = NSButton(checkboxWithTitle: "不拦截 [ 和 ] 键，让输入法处理翻页", target: self, action: #selector(bracketKeysCheckboxChanged))
+        bracketKeysCheckbox.translatesAutoresizingMaskIntoConstraints = false
+        bracketKeysCheckbox.state = skipBracketKeys ? .on : .off
+        
+        // 提示文字
+        let hintLabel = NSTextField(labelWithString: "⚠️ 启用前请在系统设置中开启「使用半角符号标点」，防止输入【】")
+        hintLabel.translatesAutoresizingMaskIntoConstraints = false
+        hintLabel.font = NSFont.systemFont(ofSize: 11)
+        hintLabel.textColor = .systemOrange
+        hintLabel.lineBreakMode = .byWordWrapping
+        hintLabel.maximumNumberOfLines = 2
+        
+        container.addSubview(titleLabel)
+        container.addSubview(bracketKeysCheckbox)
+        container.addSubview(hintLabel)
+        
+        NSLayoutConstraint.activate([
+            titleLabel.topAnchor.constraint(equalTo: container.topAnchor),
+            titleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            titleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            
+            bracketKeysCheckbox.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            bracketKeysCheckbox.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            bracketKeysCheckbox.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            
+            hintLabel.topAnchor.constraint(equalTo: bracketKeysCheckbox.bottomAnchor, constant: 4),
+            hintLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            hintLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            hintLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            
+            container.heightAnchor.constraint(equalToConstant: 80)
+        ])
+        
+        return container
+    }
+    
     private func createPreviewSection() -> NSView {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -298,6 +357,13 @@ class HotkeySettingsWindow: NSWindowController {
         updateUI()
     }
     
+    @objc private func bracketKeysCheckboxChanged() {
+        skipBracketKeys = bracketKeysCheckbox.state == .on
+        // 保存配置到 UserDefaults
+        UserDefaults.standard.set(skipBracketKeys, forKey: "SkipBracketKeys")
+        DebugLogger.log("💾 方括号键配置已保存: \(skipBracketKeys ? "跳过" : "处理")")
+    }
+    
     @objc private func saveClicked() {
         delegate?.hotkeySettingsDidSave(keyCode: selectedKeyCode, modifiers: selectedModifiers, isEnabled: isHotkeyEnabled)
         close()
@@ -369,6 +435,7 @@ class HotkeySettingsWindow: NSWindowController {
         
         // 更新复选框状态
         enableCheckbox.state = isHotkeyEnabled ? .on : .off
+        bracketKeysCheckbox.state = skipBracketKeys ? .on : .off
         
         updateUI()
     }
