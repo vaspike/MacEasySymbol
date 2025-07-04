@@ -136,8 +136,8 @@ class StatusBarManager: NSObject {
         
         menu.addItem(NSMenuItem.separator())
         
-        // 全局快捷键设置
-        let hotkeyItem = NSMenuItem(title: "全局快捷键", action: #selector(showHotkeySettings), keyEquivalent: "")
+        // 偏好设置
+        let hotkeyItem = NSMenuItem(title: "偏好设置", action: #selector(showHotkeySettings), keyEquivalent: "")
         hotkeyItem.target = self
         menu.addItem(hotkeyItem)
         
