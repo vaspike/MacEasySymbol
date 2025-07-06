@@ -40,6 +40,11 @@ class HotkeySettingsWindow: NSWindowController {
         setupUI()
     }
     
+    deinit {
+        cleanupAllReferences()
+        DebugLogger.log("🧹 HotkeySettingsWindow 析构完成")
+    }
+    
     override func windowDidLoad() {
         super.windowDidLoad()
         updatePreview()
@@ -517,6 +522,40 @@ class HotkeySettingsWindow: NSWindowController {
         close()
     }
     
+    // MARK: - Memory Management
+    
+    private func cleanupAllReferences() {
+        // 清理所有UI组件的target-action引用，避免循环引用
+        // 这个方法只在deinit时调用，确保对象被销毁时彻底清理
+        modifierPopup?.target = nil
+        modifierPopup?.action = nil
+        keyPopup?.target = nil
+        keyPopup?.action = nil
+        saveButton?.target = nil
+        saveButton?.action = nil
+        cancelButton?.target = nil
+        cancelButton?.action = nil
+        enableCheckbox?.target = nil
+        enableCheckbox?.action = nil
+        bracketKeysCheckbox?.target = nil
+        bracketKeysCheckbox?.action = nil
+        
+        // 清理委托引用
+        delegate = nil
+        
+        // 清理窗口委托
+        window?.delegate = nil
+        
+        DebugLogger.log("🧹 已清理所有UI组件的target-action引用")
+    }
+    
+    override func close() {
+        // 注意：不在这里清理UI组件引用，因为窗口可能会被重复使用
+        // 只清理委托关系，避免回调到已释放的对象
+        delegate = nil
+        super.close()
+    }
+    
     // MARK: - Helper Methods
     
     private func updateUI() {
@@ -588,6 +627,9 @@ class HotkeySettingsWindow: NSWindowController {
 
 extension HotkeySettingsWindow: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
+        // 窗口关闭时只清理委托关系，不清理UI组件引用
+        // 因为窗口设置了isReleasedWhenClosed = false，可能会被重复使用
         delegate?.hotkeySettingsDidCancel()
+        delegate = nil
     }
 } 

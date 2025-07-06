@@ -141,8 +141,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
         keyboardMonitor?.delegate = nil
         statusBarManager?.delegate = nil
         globalHotkeyManager?.delegate = nil
+        permissionManager?.delegate = nil
         
-        // 6. 释放组件
+        // 6. 清理窗口委托关系和强制关闭窗口
+        if let settingsWindow = hotkeySettingsWindow {
+            settingsWindow.delegate = nil
+            settingsWindow.close()
+        }
+        
+        // 7. 释放组件
         keyboardMonitor = nil
         symbolConverter = nil
         permissionManager = nil
@@ -234,12 +241,15 @@ extension AppDelegate: HotkeySettingsDelegate {
         if isEnabled {
             globalHotkeyManager?.registerHotkey(keyCode: keyCode, modifiers: modifiers)
         }
-        hotkeySettingsWindow = nil
+        
+        // 保存完成后重新设置委托，因为窗口可能会被重复使用
+        hotkeySettingsWindow?.delegate = self
         DebugLogger.log("✅ 全局快捷键设置已保存: 启用=\(isEnabled)")
     }
     
     func hotkeySettingsDidCancel() {
-        hotkeySettingsWindow = nil
+        // 取消操作后重新设置委托，因为窗口可能会被重复使用
+        hotkeySettingsWindow?.delegate = self
         DebugLogger.log("❌ 全局快捷键设置已取消")
     }
 }
@@ -248,10 +258,19 @@ extension AppDelegate: HotkeySettingsDelegate {
 
 extension AppDelegate {
     private func showHotkeySettingsWindow() {
-        // 如果窗口已存在，激活它
+        // 如果窗口已存在，重新设置委托并激活它
         if let existingWindow = hotkeySettingsWindow {
+            existingWindow.delegate = self  // 确保委托正确设置
             existingWindow.showWindow(self)
             existingWindow.window?.makeKeyAndOrderFront(self)
+            
+            // 更新当前设置值
+            if let manager = globalHotkeyManager {
+                let currentKeyCode = UserDefaults.standard.object(forKey: "GlobalHotkeyKeyCode") as? UInt32 ?? 1
+                let currentModifiers = UserDefaults.standard.object(forKey: "GlobalHotkeyModifiers") as? UInt32 ?? UInt32(cmdKey | optionKey)
+                let isEnabled = manager.getEnabled()
+                existingWindow.setCurrentHotkey(keyCode: currentKeyCode, modifiers: currentModifiers, isEnabled: isEnabled)
+            }
             return
         }
         
