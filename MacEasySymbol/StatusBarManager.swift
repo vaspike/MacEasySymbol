@@ -136,8 +136,8 @@ class StatusBarManager: NSObject {
         
         menu.addItem(NSMenuItem.separator())
         
-        // 全局快捷键设置
-        let hotkeyItem = NSMenuItem(title: "全局快捷键", action: #selector(showHotkeySettings), keyEquivalent: "")
+        // 偏好设置
+        let hotkeyItem = NSMenuItem(title: "偏好设置", action: #selector(showHotkeySettings), keyEquivalent: "")
         hotkeyItem.target = self
         menu.addItem(hotkeyItem)
         
@@ -234,7 +234,7 @@ class StatusBarManager: NSObject {
             let alert = NSAlert()
             alert.messageText = "MacEasySymbol"
             alert.informativeText = """
-            当前版本: 1.1.2
+            当前版本: 2.0.1-beta
             
             作者: River
             

@@ -13,29 +13,56 @@ class SymbolConverter: KeyboardEventDelegate {
     
     private var isInterventionEnabled = true
     
-    // 缓存键盘输入源相关对象，避免频繁创建
-    private var cachedInputSource: TISInputSource?
-    private var cachedKeyboardLayout: UnsafePointer<UCKeyboardLayout>?
-    private var lastLayoutChangeTime: Date = Date()
-    private let cacheValidDuration: TimeInterval = 30.0 // 缓存30秒
+    // 用户配置：是否跳过方括号键的处理
+    private var skipBracketKeys: Bool {
+        return UserDefaults.standard.bool(forKey: "SkipBracketKeys")
+    }
     
-    // 按键码到符号的映射表（基于美式键盘布局）
-    private let keyCodeToEnglishSymbol: [Int64: String] = [
-        43: ",",    // 逗号键
-        47: ".",    // 句号键
-        41: ";",    // 分号键
-        // 注意：冒号需要Shift+分号
-        44: "/",    // 斜杠键
-        39: "'",    // 单引号键
-        // 注意：双引号需要Shift+单引号
-        25: "]",    // ]键
-        33: "[",    // [键
-        // 注意：{}需要Shift+[]
-        30: "]",    // ]键（另一个位置）
-        21: "[",    // [键（另一个位置）
+    // 基础符号键映射（无需Shift）
+    private let basicSymbolKeyCodes: [Int64: String] = [
+        43: ",",    // 逗号
+        47: ".",    // 句号
+        41: ";",    // 分号
+        44: "/",    // 斜杠
+        39: "'",    // 单引号
+        33: "[",    // 左方括号
+        30: "]",    // 右方括号
+        50: "`",    // 反引号
+        42: "\\",   // 反斜杠
+        // 注意：移除了 24: "=" 和 27: "-"，让它们在中文输入法候选框中正常工作
     ]
     
-    // 更完整的按键映射（包括需要Shift的符号）
+    // 需要Shift的符号键映射
+    private let shiftSymbolKeyCodes: [Int64: String] = [
+        41: ":",    // 冒号 (Shift + 分号)
+        44: "?",    // 问号 (Shift + 斜杠)
+        39: "\"",   // 双引号 (Shift + 单引号)
+        33: "{",    // 左大括号 (Shift + [)
+        30: "}",    // 右大括号 (Shift + ])
+        25: "(",    // 左括号 (Shift + 9)
+        29: ")",    // 右括号 (Shift + 0)
+        18: "!",    // 感叹号 (Shift + 1)
+        19: "@",    // @ (Shift + 2)
+        20: "#",    // # (Shift + 3)
+        21: "$",    // 美元符号 (Shift + 4)
+        23: "%",    // % (Shift + 5)
+        22: "^",    // 脱字符 (Shift + 6)
+        26: "&",    // & (Shift + 7)
+        28: "*",    // * (Shift + 8)
+        43: "<",    // 小于号 (Shift + 逗号)
+        47: ">",    // 大于号 (Shift + 句号)
+        50: "~",    // 波浪号 (Shift + `)
+        42: "|",    // 竖线 (Shift + \)
+        27: "_",    // 下划线 (Shift + 减号)
+        24: "+",    // 加号 (Shift + 等号)
+    ]
+    
+    // 符号键集合（用于快速判断）
+    private lazy var allSymbolKeyCodes: Set<Int64> = {
+        Set(basicSymbolKeyCodes.keys).union(Set(shiftSymbolKeyCodes.keys))
+    }()
+    
+    // 符号映射表（用于创建事件）
     private let symbolMappings: [String: (keyCode: Int64, needsShift: Bool)] = [
         ",": (43, false),   // 逗号
         ".": (47, false),   // 句号
@@ -52,15 +79,22 @@ class SymbolConverter: KeyboardEventDelegate {
         "(": (25, true),    // 左括号 (Shift + 9)
         ")": (29, true),    // 右括号 (Shift + 0)
         "!": (18, true),    // 感叹号 (Shift + 1)
+        "@": (19, true),    // @ (Shift + 2)
+        "#": (20, true),    // # (Shift + 3)
+        "$": (21, true),    // 美元符号 (Shift + 4)
+        "%": (23, true),    // % (Shift + 5)
+        "^": (22, true),    // 脱字符 (Shift + 6)
+        "&": (26, true),    // & (Shift + 7)
+        "*": (28, true),    // * (Shift + 8)
         "<": (43, true),    // 小于号 (Shift + 逗号)
         ">": (47, true),    // 大于号 (Shift + 句号)
         "~": (50, true),    // 波浪号 (Shift + `)
         "`": (50, false),   // 反引号
         "\\": (42, false),  // 反斜杠
         "|": (42, true),    // 竖线 (Shift + \)
-        "$": (21, true),    // 美元符号 (Shift + 4)
-        "^": (22, true),    // 脱字符 (Shift + 6)
         "_": (27, true),    // 下划线 (Shift + 减号)
+        "+": (24, true),    // 加号 (Shift + 等号)
+        // 注意：移除了 "-" 和 "=" 的基础映射，保留 Shift 版本
     ]
     
     // 中文符号到英文符号的映射
@@ -73,8 +107,8 @@ class SymbolConverter: KeyboardEventDelegate {
         "！": "!",
         "『": "'",          // 直角单引号左
         "』": "'",          // 直角单引号右
-        "「": "{",         // 直角双引号左 生效
-        "」": "}",         // 直角双引号右 生效
+        "「": "{",         // 直角双引号左
+        "」": "}",         // 直角双引号右
         "（": "(",
         "）": ")",
         "【": "[",
@@ -87,18 +121,11 @@ class SymbolConverter: KeyboardEventDelegate {
         "……": "^",           // 省略号 -> 脱字符
         "《": "<",
         "》": ">",
-        // 注意：引号的处理已移至专门的keyCode == 39逻辑中
         "～": "~",           // 全角波浪号
         "·": "`",           // 间隔号 -> 反引号
         "——": "_",           // 长破折号 -> 下划线
         "\u{2014}": "_",    // 长破折号（单个字符）-> 下划线
-
     ]
-    
-    // MARK: - 析构函数，清理缓存的资源
-    deinit {
-        clearKeyboardLayoutCache()
-    }
     
     // MARK: - Public Methods
     
@@ -115,118 +142,55 @@ class SymbolConverter: KeyboardEventDelegate {
             return originalEvent
         }
         
-        // 获取当前按键对应的字符（使用缓存优化）
-        guard let inputString = getInputString(for: keyCode, flags: flags) else {
+        // 只处理符号键
+        guard allSymbolKeyCodes.contains(keyCode) else {
             return originalEvent
         }
         
-        // 特殊处理引号 - 当检测到任何引号时，统一输出英文引号
-        if keyCode == 39 { // 引号键的keyCode是39
-            if inputString == "'" || inputString == "\u{2018}" || inputString == "\u{2019}" || inputString == "\u{FF07}" {
-                // 单引号相关 -> 输出英文单引号
-                return createEventForSymbol("'", originalEvent: originalEvent)
-            } else if inputString == "\"" || inputString == "\u{201C}" || inputString == "\u{201D}" || inputString == "\u{FF02}" {
-                // 双引号相关 -> 输出英文双引号  
-                return createEventForSymbol("\"", originalEvent: originalEvent)
-            }
+        // 检查修饰键：只允许无修饰键或仅有Shift键的情况
+        let hasCommand = flags.contains(.maskCommand)
+        let hasOption = flags.contains(.maskAlternate)
+        let hasControl = flags.contains(.maskControl)
+        let hasShift = flags.contains(.maskShift)
+        let hasFn = flags.contains(.maskSecondaryFn)
+        
+        // 如果有Command、Option、Control或Fn键，直接返回原事件，不进行符号转换
+        guard !hasCommand && !hasOption && !hasControl && !hasFn else {
+            DebugLogger.log("⏭️ 检测到修饰键组合 (cmd:\(hasCommand), opt:\(hasOption), ctrl:\(hasControl), fn:\(hasFn))，跳过符号转换")
+            return originalEvent
         }
         
-        // 检查是否为其他中文符号
-        guard let englishSymbol = chineseToEnglishMapping[inputString] else {
+        // 检查是否需要跳过方括号键（只对无修饰键的情况生效）
+        if skipBracketKeys && !hasShift && (keyCode == 33 || keyCode == 30) {
+            DebugLogger.log("⏭️ 根据用户配置跳过方括号键处理 (keyCode: \(keyCode))")
+            return originalEvent
+        }
+        
+        // 现在只可能是：无修饰键 或 仅有Shift键
+        // 获取要输出的英文符号
+        let englishSymbol: String
+        if hasShift, let shiftSymbol = shiftSymbolKeyCodes[keyCode] {
+            englishSymbol = shiftSymbol
+        } else if !hasShift, let basicSymbol = basicSymbolKeyCodes[keyCode] {
+            englishSymbol = basicSymbol
+        } else {
+            // 这种情况不应该发生，但为了安全起见
             return originalEvent
         }
         
         // 创建新的键盘事件来输出英文符号
-        return createEventForSymbol(englishSymbol, originalEvent: originalEvent)
+        let result = createEventForSymbol(englishSymbol, originalEvent: originalEvent)
+        
+        DebugLogger.log("🔄 符号转换: keyCode=\(keyCode), shift=\(hasShift), 输出='\(englishSymbol)'")
+        
+        return result
     }
     
     // MARK: - Private Methods
     
-    private func isSymbolKey(keyCode: Int64) -> Bool {
-        // 常见符号按键的键盘码
-        let symbolKeyCodes: Set<Int64> = [
-            43, 47, 41, 44, 39, 33, 30, 25, 29, 18, // 基础符号
-            19, 20, 21, 23, 22, 26, 28, 24, 27,    // 数字行的符号
-            50, // 反引号键（波浪号）
-        ]
-        return symbolKeyCodes.contains(keyCode)
-    }
-    
-    // 优化的获取输入字符串方法，使用缓存减少API调用
-    private func getInputString(for keyCode: Int64, flags: CGEventFlags) -> String? {
-        // 检查缓存是否需要更新
-        let now = Date()
-        if cachedKeyboardLayout == nil || now.timeIntervalSince(lastLayoutChangeTime) > cacheValidDuration {
-            updateKeyboardLayoutCache()
-        }
-        
-        guard let keyboardLayout = cachedKeyboardLayout else {
-            return nil
-        }
-        
-        var deadKeyState: UInt32 = 0
-        var chars = [UniChar](repeating: 0, count: 4)
-        var actualLength = 0
-        
-        let modifierKeyState = UInt32((flags.rawValue >> 16) & 0xFF)
-        
-        let status = UCKeyTranslate(
-            keyboardLayout,
-            UInt16(keyCode),
-            UInt16(kUCKeyActionDown),
-            modifierKeyState,
-            UInt32(LMGetKbdType()),
-            OptionBits(kUCKeyTranslateNoDeadKeysBit),
-            &deadKeyState,
-            4,
-            &actualLength,
-            &chars
-        )
-        
-        guard status == noErr, actualLength > 0 else {
-            return nil
-        }
-        
-        return String(utf16CodeUnits: chars, count: actualLength)
-    }
-    
-    // 更新键盘布局缓存
-    private func updateKeyboardLayoutCache() {
-        // 清理旧的缓存
-        clearKeyboardLayoutCache()
-        
-        // 获取新的输入源
-        cachedInputSource = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue()
-        
-        guard let inputSource = cachedInputSource else {
-            return
-        }
-        
-        // 获取键盘布局数据
-        let layoutData = TISGetInputSourceProperty(inputSource, kTISPropertyUnicodeKeyLayoutData)
-        
-        guard let keyLayoutPtr = layoutData else {
-            return
-        }
-        
-        let keyLayout = Unmanaged<CFData>.fromOpaque(keyLayoutPtr).takeUnretainedValue()
-        let keyLayoutDataPtr = CFDataGetBytePtr(keyLayout)
-        
-        cachedKeyboardLayout = keyLayoutDataPtr?.withMemoryRebound(to: UCKeyboardLayout.self, capacity: 1) { $0 }
-        lastLayoutChangeTime = Date()
-        
-        DebugLogger.log("🔄 键盘布局缓存已更新")
-    }
-    
-    // 清理键盘布局缓存
-    private func clearKeyboardLayoutCache() {
-        cachedKeyboardLayout = nil
-        // 注意：cachedInputSource 是通过 takeRetainedValue() 获取的，ARC会自动管理
-        cachedInputSource = nil
-    }
-    
     private func createEventForSymbol(_ symbol: String, originalEvent: CGEvent) -> CGEvent? {
         guard let mapping = symbolMappings[symbol] else {
+            DebugLogger.logError("❌ 无法找到符号 '\(symbol)' 的映射")
             return originalEvent
         }
         
@@ -238,6 +202,7 @@ class SymbolConverter: KeyboardEventDelegate {
         )
         
         guard let event = newEvent else {
+            DebugLogger.logError("❌ 创建键盘事件失败")
             return originalEvent
         }
         
@@ -250,14 +215,39 @@ class SymbolConverter: KeyboardEventDelegate {
         let utf16Chars = Array(symbol.utf16)
         event.keyboardSetUnicodeString(stringLength: utf16Chars.count, unicodeString: utf16Chars)
         
-        DebugLogger.log("🔄 符号转换: 输出英文符号 '\(symbol)'")
-        
         return event
     }
     
-    // 添加手动清理方法，供外部调用
+    // 添加手动清理方法，供外部调用（保持接口兼容性）
     func cleanup() {
-        clearKeyboardLayoutCache()
-        DebugLogger.log("🧹 SymbolConverter 内存清理完成")
+        // 新版本无需清理缓存，但保留方法以维持接口兼容性
+        DebugLogger.log("🧹 SymbolConverter 清理完成（简化版本无需清理）")
+    }
+    
+    // MARK: - Debug Methods
+    
+    func getSupportedSymbols() -> [String] {
+        return Array(symbolMappings.keys).sorted()
+    }
+    
+    func getKeyCodeMapping() -> String {
+        var result = "支持的按键映射:\n"
+        
+        result += "\n基础符号键 (无需Shift):\n"
+        for (keyCode, symbol) in basicSymbolKeyCodes.sorted(by: { $0.key < $1.key }) {
+            result += "  keyCode \(keyCode) -> '\(symbol)'\n"
+        }
+        
+        result += "\nShift符号键 (需要Shift):\n"
+        for (keyCode, symbol) in shiftSymbolKeyCodes.sorted(by: { $0.key < $1.key }) {
+            result += "  keyCode \(keyCode) + Shift -> '\(symbol)'\n"
+        }
+        
+        result += "\n中文符号映射:\n"
+        for (chinese, english) in chineseToEnglishMapping.sorted(by: { $0.key < $1.key }) {
+            result += "  '\(chinese)' -> '\(english)'\n"
+        }
+        
+        return result
     }
 } 
