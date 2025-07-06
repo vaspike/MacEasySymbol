@@ -8,7 +8,7 @@
 
 ---
 
-最新版本: 2.0.1-beta
+最新版本: 2.1.2
 
 ## 功能特性
 
@@ -49,8 +49,7 @@
 
 ```bash
 # install
-brew tap vaspike/maceasysymbol
-brew install --cask MacEasySymbol
+brew tap vaspike/maceasysymbol && brew install --cask MacEasySymbol
 
 # uninstall
 brew uninstall --cask maceasysymbol
@@ -99,6 +98,10 @@ MacEasySymbol 需要以下权限才能正常工作：
 
 
 ## 版本历史
+
+### v2.1.2 (2025-07-06)
+- 彻底简化介入模式工作原理, 解决小概率发生的介入模式不生效
+- 优化菜单栏UI选项, 优化菜单栏UI内存管理
 
 ### v1.1.2 (2025-07-02)
 - 1.1版本-第二次build
