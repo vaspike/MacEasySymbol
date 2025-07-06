@@ -44,7 +44,19 @@
 
 ## 安装方法
 
-### 方法一：使用 DMG 安装包
+### 方法一: 使用 Homebrew安装
+
+
+```bash
+# install
+brew tap vaspike/maceasysymbol
+brew install --cask MacEasySymbol
+
+# uninstall
+brew uninstall --cask maceasysymbol
+```
+
+### 方法二：使用 DMG 安装包
 
 1. 在[release](https://github.com/vaspike/MacEasySymbol/releases)下载 最新的dmg 文件
 2. 双击打开 DMG 文件
@@ -52,7 +64,7 @@
 4. 在 Applications 文件夹中启动应用
 5. 首次运行需要授予辅助功能权限
 
-### 方法二：从源码构建
+### 方法三：从源码构建
 
 ```bash
 # 克隆项目
@@ -87,6 +99,10 @@ MacEasySymbol 需要以下权限才能正常工作：
 
 
 ## 版本历史
+
+### v1.1.2 (2025-07-02)
+- 1.1版本-第二次build
+- 优化`关于`, 显示准确的版本信息
 
 ### v1.1.0 (2025-07-02)
 - ✨ 新增全局快捷键功能(默认 ⌘⌥S)
