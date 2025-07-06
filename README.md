@@ -60,6 +60,9 @@
 # install
 brew tap vaspike/maceasysymbol && brew install --cask MacEasySymbol
 
+# update
+brew updade && brew upgrade MacEasySymbol
+
 # uninstall
 brew uninstall --cask maceasysymbol
 ```
