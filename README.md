@@ -1,5 +1,8 @@
 # MacEasySymbol
 
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/vaspike/maceasysymbol/total?style=for-the-badge)
+---
+
 一个为使用中文输入的用户设计的 macOS 应用，能够让你在中文输入时使用英文标点。
 
 受Windows平台微软输入法提供的功能: `中文输入时使用英文标点`启发
