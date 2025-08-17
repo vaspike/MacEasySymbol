@@ -1,14 +1,28 @@
 # MacEasySymbol
 
-一个为使用原生中文输入法用户设计的 macOS 应用，能够智能自动转换中文符号为英文符号。
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/vaspike/maceasysymbol/total?style=for-the-badge)
+---
 
-采用原生 Swift 开发，运行无延迟且资源占用极低(开发测试环境下内存占用不超过 18MB)。
+一个为使用中文输入的用户设计的 macOS 应用，能够让你在中文输入时使用英文标点。
+
+受Windows平台微软输入法提供的功能: `中文输入时使用英文标点`启发
+
+采用原生 Swift 开发，运行无延迟且资源占用极低, 支持自定义快捷键快速切换`介入模式`的启用和关闭。
 
 **系统要求:macOS 11.5 或更高版本**
 
 ---
 
 最新版本: 2.1.2
+
+---
+## 应用概览
+<img width="478" alt="image" src="https://github.com/user-attachments/assets/b0bb8bb3-fc92-4365-b5a1-244c80e135c3" />
+<img width="480" alt="image" src="https://github.com/user-attachments/assets/0866f642-d542-4a6e-8a49-99c83e521df7" />
+<img width="662" alt="image" src="https://github.com/user-attachments/assets/cd0ad805-6092-40b1-9a82-46f066d64f7c" />
+
+
+---
 
 ## 功能特性
 
@@ -50,6 +64,9 @@
 ```bash
 # install
 brew tap vaspike/maceasysymbol && brew install --cask MacEasySymbol
+
+# update
+brew updade && brew upgrade MacEasySymbol
 
 # uninstall
 brew uninstall --cask maceasysymbol
