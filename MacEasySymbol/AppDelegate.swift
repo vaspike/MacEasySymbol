@@ -17,6 +17,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
     private var permissionManager: PermissionManager?
     private var globalHotkeyManager: GlobalHotkeyManager?
     private var hotkeySettingsWindow: HotkeySettingsWindow?
+    private var whitelistSettingsWindow: WhitelistSettingsWindow?
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // 设置为Agent应用，隐藏Dock图标
@@ -149,12 +150,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
             settingsWindow.close()
         }
         
+        if let whitelistWindow = whitelistSettingsWindow {
+            whitelistWindow.delegate = nil
+            whitelistWindow.close()
+        }
+        
         // 7. 释放组件
         keyboardMonitor = nil
         symbolConverter = nil
         permissionManager = nil
         globalHotkeyManager = nil
         hotkeySettingsWindow = nil
+        whitelistSettingsWindow = nil
         
         // 6. 强制垃圾回收（仅用于调试，生产环境中系统会自动管理）
         #if DEBUG
@@ -213,6 +220,10 @@ extension AppDelegate: StatusBarManagerDelegate {
     
     func statusBarManagerDidRequestHotkeySettings(_ manager: StatusBarManager) {
         showHotkeySettingsWindow()
+    }
+    
+    func statusBarManagerDidRequestWhitelistSettings(_ manager: StatusBarManager) {
+        showWhitelistSettingsWindow()
     }
     
     func statusBarManagerDidRequestQuit(_ manager: StatusBarManager) {
@@ -289,6 +300,22 @@ extension AppDelegate {
         hotkeySettingsWindow?.showWindow(self)
         hotkeySettingsWindow?.window?.makeKeyAndOrderFront(self)
     }
+    
+    private func showWhitelistSettingsWindow() {
+        // 如果窗口已存在，重新设置委托并激活它
+        if let existingWindow = whitelistSettingsWindow {
+            existingWindow.delegate = self  // 确保委托正确设置
+            existingWindow.showWindow(self)
+            existingWindow.window?.makeKeyAndOrderFront(self)
+            return
+        }
+        
+        // 创建新窗口
+        whitelistSettingsWindow = WhitelistSettingsWindow()
+        whitelistSettingsWindow?.delegate = self
+        whitelistSettingsWindow?.showWindow(self)
+        whitelistSettingsWindow?.window?.makeKeyAndOrderFront(self)
+    }
 }
 
 // MARK: - PermissionManagerDelegate
@@ -343,6 +370,23 @@ extension AppDelegate {
                 DebugLogger.logError("❌ 重启应用失败: \(error.localizedDescription)")
             }
         }
+    }
+}
+
+// MARK: - WhitelistSettingsDelegate
+//防止未重启应用继续使用时可能不生效
+
+extension AppDelegate: WhitelistSettingsDelegate {
+    func whitelistSettingsDidSave() {
+        // 白名单设置保存后重新设置委托，因为窗口可能会被重复使用
+        whitelistSettingsWindow?.delegate = self
+        DebugLogger.log("✅ 白名单设置已保存")
+    }
+    
+    func whitelistSettingsDidCancel() {
+        // 取消操作后重新设置委托，因为窗口可能会被重复使用
+        whitelistSettingsWindow?.delegate = self
+        DebugLogger.log("❌ 白名单设置已取消")
     }
 }
 

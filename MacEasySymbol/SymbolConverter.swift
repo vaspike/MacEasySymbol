@@ -142,6 +142,14 @@ class SymbolConverter: KeyboardEventDelegate {
             return originalEvent
         }
         
+        // 检查当前应用是否在白名单中，如果在则跳过介入
+        if AppWhitelistManager.shared.isCurrentAppWhitelisted() {
+            // if let bundleID = AppWhitelistManager.shared.getCurrentFocusedAppBundleID() {
+            //     DebugLogger.log("⏭️ 当前应用在白名单中，跳过符号转换: \(bundleID)")
+            // }
+            return originalEvent
+        }
+        
         // 只处理符号键
         guard allSymbolKeyCodes.contains(keyCode) else {
             return originalEvent

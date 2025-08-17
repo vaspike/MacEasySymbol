@@ -8,4 +8,4 @@ let delegate = AppDelegate()
 app.delegate = delegate
 
 // 运行应用程序
-app.run() 
+app.run()

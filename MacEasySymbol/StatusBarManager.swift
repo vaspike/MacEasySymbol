@@ -11,6 +11,7 @@ protocol StatusBarManagerDelegate: AnyObject {
     func statusBarManager(_ manager: StatusBarManager, didToggleIntervention enabled: Bool)
     func statusBarManagerDidRequestQuit(_ manager: StatusBarManager)
     func statusBarManagerDidRequestHotkeySettings(_ manager: StatusBarManager)
+    func statusBarManagerDidRequestWhitelistSettings(_ manager: StatusBarManager)
 }
 
 class StatusBarManager: NSObject {
@@ -141,6 +142,11 @@ class StatusBarManager: NSObject {
         hotkeyItem.target = self
         menu.addItem(hotkeyItem)
         
+        // 白名单设置
+        let whitelistItem = NSMenuItem(title: "白名单设置", action: #selector(showWhitelistSettings), keyEquivalent: "")
+        whitelistItem.target = self
+        menu.addItem(whitelistItem)
+        
         menu.addItem(NSMenuItem.separator())
         
         // 帮助信息
@@ -222,6 +228,10 @@ class StatusBarManager: NSObject {
         delegate?.statusBarManagerDidRequestHotkeySettings(self)
     }
     
+    @objc private func showWhitelistSettings() {
+        delegate?.statusBarManagerDidRequestWhitelistSettings(self)
+    }
+    
     @objc private func quitApp() {
         delegate?.statusBarManagerDidRequestQuit(self)
     }
@@ -234,11 +244,11 @@ class StatusBarManager: NSObject {
             let alert = NSAlert()
             alert.messageText = "MacEasySymbol"
             alert.informativeText = """
-            当前版本: 2.1.2
+            当前版本: 2.3.1
             
             作者: River
             
-            一个帮助使用原生中文输入法的用户自动转换符号的 macOS 应用。
+            轻松在macOS下实现: 中文输入时使用英文标点。
             """
             alert.addButton(withTitle: "访问 GitHub")
             alert.addButton(withTitle: "确定")
