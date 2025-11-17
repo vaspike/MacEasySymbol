@@ -18,6 +18,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
     private var globalHotkeyManager: GlobalHotkeyManager?
     private var hotkeySettingsWindow: HotkeySettingsWindow?
     private var whitelistSettingsWindow: WhitelistSettingsWindow?
+    private var symbolSettingsWindow: SymbolSettingsWindow?
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // 设置为Agent应用，隐藏Dock图标
@@ -149,11 +150,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
             settingsWindow.delegate = nil
             settingsWindow.close()
         }
-        
+
         if let whitelistWindow = whitelistSettingsWindow {
             whitelistWindow.delegate = nil
             whitelistWindow.close()
         }
+
+        if let symbolWindow = symbolSettingsWindow {
+            symbolWindow.delegate = nil
+            symbolWindow.close()
+        }
+
+        // 8. 清理已废弃的设置数据
+        UserDefaults.standard.removeObject(forKey: "SkipBracketKeys")
         
         // 7. 释放组件
         keyboardMonitor = nil
@@ -162,6 +171,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
         globalHotkeyManager = nil
         hotkeySettingsWindow = nil
         whitelistSettingsWindow = nil
+        symbolSettingsWindow = nil
         
         // 6. 强制垃圾回收（仅用于调试，生产环境中系统会自动管理）
         #if DEBUG
@@ -221,7 +231,11 @@ extension AppDelegate: StatusBarManagerDelegate {
     func statusBarManagerDidRequestHotkeySettings(_ manager: StatusBarManager) {
         showHotkeySettingsWindow()
     }
-    
+
+    func statusBarManagerDidRequestSymbolSettings(_ manager: StatusBarManager) {
+        showSymbolSettingsWindow()
+    }
+
     func statusBarManagerDidRequestWhitelistSettings(_ manager: StatusBarManager) {
         showWhitelistSettingsWindow()
     }
@@ -309,12 +323,28 @@ extension AppDelegate {
             existingWindow.window?.makeKeyAndOrderFront(self)
             return
         }
-        
+
         // 创建新窗口
         whitelistSettingsWindow = WhitelistSettingsWindow()
         whitelistSettingsWindow?.delegate = self
         whitelistSettingsWindow?.showWindow(self)
         whitelistSettingsWindow?.window?.makeKeyAndOrderFront(self)
+    }
+
+    private func showSymbolSettingsWindow() {
+        // 如果窗口已存在，重新设置委托并激活它
+        if let existingWindow = symbolSettingsWindow {
+            existingWindow.delegate = self  // 确保委托正确设置
+            existingWindow.showWindow(self)
+            existingWindow.window?.makeKeyAndOrderFront(self)
+            return
+        }
+
+        // 创建新窗口
+        symbolSettingsWindow = SymbolSettingsWindow()
+        symbolSettingsWindow?.delegate = self
+        symbolSettingsWindow?.showWindow(self)
+        symbolSettingsWindow?.window?.makeKeyAndOrderFront(self)
     }
 }
 
@@ -387,6 +417,22 @@ extension AppDelegate: WhitelistSettingsDelegate {
         // 取消操作后重新设置委托，因为窗口可能会被重复使用
         whitelistSettingsWindow?.delegate = self
         DebugLogger.log("❌ 白名单设置已取消")
+    }
+}
+
+// MARK: - SymbolSettingsDelegate
+
+extension AppDelegate: SymbolSettingsDelegate {
+    func symbolSettingsDidSave() {
+        // 符号设置保存后重新设置委托
+        symbolSettingsWindow?.delegate = self
+        DebugLogger.log("✅ 符号转换设置已保存")
+    }
+
+    func symbolSettingsDidCancel() {
+        // 取消操作后重新设置委托
+        symbolSettingsWindow?.delegate = self
+        DebugLogger.log("❌ 符号转换设置已取消")
     }
 }
 

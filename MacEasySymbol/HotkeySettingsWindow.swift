@@ -14,21 +14,19 @@ class HotkeySettingsWindow: NSWindowController {
     private var keyPopup: NSPopUpButton!
     private var previewLabel: NSTextField!
     private var enableCheckbox: NSButton!
-    private var bracketKeysCheckbox: NSButton!
     private var saveButton: NSButton!
     private var cancelButton: NSButton!
     
     private var selectedModifiers: UInt32 = UInt32(cmdKey | optionKey)
     private var selectedKeyCode: UInt32 = 1 // S键
     private var isHotkeyEnabled: Bool = false  // 默认禁用快捷键
-    private var skipBracketKeys: Bool = false  // 默认不跳过方括号键
     
     // MARK: - Init
     
     convenience init() {
         // 创建窗口
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 500),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 280),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -55,7 +53,7 @@ class HotkeySettingsWindow: NSWindowController {
     private func setupWindow() {
         guard let window = window else { return }
         
-        window.title = "MacEasySymbol - 偏好设置"
+        window.title = "快捷键设置"
         window.isReleasedWhenClosed = false
         window.level = .floating
         window.center()
@@ -65,9 +63,7 @@ class HotkeySettingsWindow: NSWindowController {
     }
     
     private func loadSavedSettings() {
-        // 加载方括号键配置
-        skipBracketKeys = UserDefaults.standard.bool(forKey: "SkipBracketKeys")
-        DebugLogger.log("📖 已加载方括号键配置: \(skipBracketKeys ? "跳过" : "处理")")
+        DebugLogger.log("📖 快捷键设置窗口已加载")
     }
     
     private func setupUI() {
@@ -83,8 +79,6 @@ class HotkeySettingsWindow: NSWindowController {
         stackView.addArrangedSubview(createHeaderSection())
         stackView.addArrangedSubview(createSeparator())
         stackView.addArrangedSubview(createHotkeySection())
-        stackView.addArrangedSubview(createSeparator())
-        stackView.addArrangedSubview(createCompatibilitySection())
         stackView.addArrangedSubview(createSeparator())
         stackView.addArrangedSubview(createButtonSection())
         
@@ -104,34 +98,34 @@ class HotkeySettingsWindow: NSWindowController {
     private func createHeaderSection() -> NSView {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
-        
-        // 应用图标（可选）
-        let titleLabel = NSTextField(labelWithString: "MacEasySymbol 偏好设置")
+
+        // 节标题
+        let titleLabel = NSTextField(labelWithString: "全局快捷键配置")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.font = NSFont.systemFont(ofSize: 18, weight: .semibold)
+        titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
         titleLabel.alignment = .center
         titleLabel.textColor = .labelColor
-        
-        let subtitleLabel = NSTextField(labelWithString: "自定义应用行为和快捷键")
+
+        let subtitleLabel = NSTextField(labelWithString: "设置全局快捷键来切换符号转换功能")
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        subtitleLabel.font = NSFont.systemFont(ofSize: 13)
+        subtitleLabel.font = NSFont.systemFont(ofSize: 12)
         subtitleLabel.alignment = .center
         subtitleLabel.textColor = .secondaryLabelColor
-        
+
         container.addSubview(titleLabel)
         container.addSubview(subtitleLabel)
-        
+
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 10),
             titleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             titleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 6),
             subtitleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             subtitleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             subtitleLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -10)
         ])
-        
+
         return container
     }
     
@@ -159,59 +153,37 @@ class HotkeySettingsWindow: NSWindowController {
     private func createHotkeySection() -> NSView {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
-        
-        // 节标题
-        let titleLabel = NSTextField(labelWithString: "全局快捷键")
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.font = NSFont.systemFont(ofSize: 15, weight: .medium)
-        titleLabel.textColor = .labelColor
-        
-        // 说明文字
-        let descLabel = NSTextField(labelWithString: "设置一个全局快捷键来快速切换介入模式")
-        descLabel.translatesAutoresizingMaskIntoConstraints = false
-        descLabel.font = NSFont.systemFont(ofSize: 12)
-        descLabel.textColor = .secondaryLabelColor
-        
+
         // 启用开关
         enableCheckbox = NSButton(checkboxWithTitle: "启用全局快捷键", target: self, action: #selector(enableCheckboxChanged))
         enableCheckbox.translatesAutoresizingMaskIntoConstraints = false
         enableCheckbox.state = isHotkeyEnabled ? .on : .off
-        
+
         // 快捷键配置容器
         let configContainer = createHotkeyConfigContainer()
-        
+
         // 预览
         let previewContainer = createPreviewSection()
-        
-        container.addSubview(titleLabel)
-        container.addSubview(descLabel)
+
         container.addSubview(enableCheckbox)
         container.addSubview(configContainer)
         container.addSubview(previewContainer)
-        
+
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 15),
-            titleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            titleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            
-            descLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            descLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            descLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            
-            enableCheckbox.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 12),
+            enableCheckbox.topAnchor.constraint(equalTo: container.topAnchor, constant: 15),
             enableCheckbox.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             enableCheckbox.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            
-            configContainer.topAnchor.constraint(equalTo: enableCheckbox.bottomAnchor, constant: 12),
+
+            configContainer.topAnchor.constraint(equalTo: enableCheckbox.bottomAnchor, constant: 15),
             configContainer.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             configContainer.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            
-            previewContainer.topAnchor.constraint(equalTo: configContainer.bottomAnchor, constant: 12),
+
+            previewContainer.topAnchor.constraint(equalTo: configContainer.bottomAnchor, constant: 15),
             previewContainer.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             previewContainer.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             previewContainer.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -15)
         ])
-        
+
         return container
     }
     
@@ -237,47 +209,6 @@ class HotkeySettingsWindow: NSWindowController {
             keyContainer.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             keyContainer.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             keyContainer.bottomAnchor.constraint(equalTo: container.bottomAnchor)
-        ])
-        
-        return container
-    }
-    
-    private func createCompatibilitySection() -> NSView {
-        let container = NSView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-        
-        // 节标题
-        let titleLabel = NSTextField(labelWithString: "输入法兼容性")
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.font = NSFont.systemFont(ofSize: 15, weight: .medium)
-        titleLabel.textColor = .labelColor
-        
-        // 说明文字
-        let descLabel = NSTextField(labelWithString: "为不同的输入法使用习惯提供兼容性选项")
-        descLabel.translatesAutoresizingMaskIntoConstraints = false
-        descLabel.font = NSFont.systemFont(ofSize: 12)
-        descLabel.textColor = .secondaryLabelColor
-        
-        // 方括号键配置
-        let bracketContainer = createBracketKeysSection()
-        
-        container.addSubview(titleLabel)
-        container.addSubview(descLabel)
-        container.addSubview(bracketContainer)
-        
-        NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 15),
-            titleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            titleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            
-            descLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            descLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            descLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            
-            bracketContainer.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 12),
-            bracketContainer.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            bracketContainer.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            bracketContainer.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -15)
         ])
         
         return container
@@ -368,50 +299,6 @@ class HotkeySettingsWindow: NSWindowController {
     
 
     
-    private func createBracketKeysSection() -> NSView {
-        let container = NSView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-        
-        // 复选框
-        bracketKeysCheckbox = NSButton(checkboxWithTitle: "不拦截 [ 和 ] 键，让输入法处理候选框翻页", target: self, action: #selector(bracketKeysCheckboxChanged))
-        bracketKeysCheckbox.translatesAutoresizingMaskIntoConstraints = false
-        bracketKeysCheckbox.state = skipBracketKeys ? .on : .off
-        
-        // 说明文字
-        let descLabel = NSTextField(labelWithString: "适用于使用方括号键进行输入法翻页的用户")
-        descLabel.translatesAutoresizingMaskIntoConstraints = false
-        descLabel.font = NSFont.systemFont(ofSize: 11)
-        descLabel.textColor = .secondaryLabelColor
-        
-        // 提示文字
-        let hintLabel = NSTextField(labelWithString: "⚠️ 启用前请在系统设置中开启「使用半角符号标点」，防止输入【】")
-        hintLabel.translatesAutoresizingMaskIntoConstraints = false
-        hintLabel.font = NSFont.systemFont(ofSize: 11)
-        hintLabel.textColor = .systemOrange
-        hintLabel.lineBreakMode = .byWordWrapping
-        hintLabel.maximumNumberOfLines = 2
-        
-        container.addSubview(bracketKeysCheckbox)
-        container.addSubview(descLabel)
-        container.addSubview(hintLabel)
-        
-        NSLayoutConstraint.activate([
-            bracketKeysCheckbox.topAnchor.constraint(equalTo: container.topAnchor),
-            bracketKeysCheckbox.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            bracketKeysCheckbox.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            
-            descLabel.topAnchor.constraint(equalTo: bracketKeysCheckbox.bottomAnchor, constant: 4),
-            descLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
-            descLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            
-            hintLabel.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 4),
-            hintLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
-            hintLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            hintLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor)
-        ])
-        
-        return container
-    }
     
     private func createPreviewSection() -> NSView {
         let container = NSView()
@@ -424,7 +311,7 @@ class HotkeySettingsWindow: NSWindowController {
         previewLabel.translatesAutoresizingMaskIntoConstraints = false
         previewLabel.isEditable = false
         previewLabel.isBordered = true
-        previewLabel.backgroundColor = NSColor.controlBackgroundColor
+        previewLabel.backgroundColor = NSColor.textBackgroundColor
         previewLabel.font = NSFont.monospacedSystemFont(ofSize: 14, weight: .medium)
         previewLabel.alignment = .center
         
@@ -505,12 +392,6 @@ class HotkeySettingsWindow: NSWindowController {
         updateUI()
     }
     
-    @objc private func bracketKeysCheckboxChanged() {
-        skipBracketKeys = bracketKeysCheckbox.state == .on
-        // 保存配置到 UserDefaults
-        UserDefaults.standard.set(skipBracketKeys, forKey: "SkipBracketKeys")
-        DebugLogger.log("💾 方括号键配置已保存: \(skipBracketKeys ? "跳过" : "处理")")
-    }
     
     @objc private func saveClicked() {
         delegate?.hotkeySettingsDidSave(keyCode: selectedKeyCode, modifiers: selectedModifiers, isEnabled: isHotkeyEnabled)
@@ -537,8 +418,6 @@ class HotkeySettingsWindow: NSWindowController {
         cancelButton?.action = nil
         enableCheckbox?.target = nil
         enableCheckbox?.action = nil
-        bracketKeysCheckbox?.target = nil
-        bracketKeysCheckbox?.action = nil
         
         // 清理委托引用
         delegate = nil
@@ -617,7 +496,6 @@ class HotkeySettingsWindow: NSWindowController {
         
         // 更新复选框状态
         enableCheckbox.state = isHotkeyEnabled ? .on : .off
-        bracketKeysCheckbox.state = skipBracketKeys ? .on : .off
         
         updateUI()
     }

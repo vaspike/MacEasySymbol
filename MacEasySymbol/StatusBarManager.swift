@@ -12,6 +12,7 @@ protocol StatusBarManagerDelegate: AnyObject {
     func statusBarManagerDidRequestQuit(_ manager: StatusBarManager)
     func statusBarManagerDidRequestHotkeySettings(_ manager: StatusBarManager)
     func statusBarManagerDidRequestWhitelistSettings(_ manager: StatusBarManager)
+    func statusBarManagerDidRequestSymbolSettings(_ manager: StatusBarManager)
 }
 
 class StatusBarManager: NSObject {
@@ -138,12 +139,17 @@ class StatusBarManager: NSObject {
         menu.addItem(NSMenuItem.separator())
         
         // 偏好设置
-        let hotkeyItem = NSMenuItem(title: "偏好设置", action: #selector(showHotkeySettings), keyEquivalent: "")
+        let hotkeyItem = NSMenuItem(title: "快捷键设置", action: #selector(showHotkeySettings), keyEquivalent: "")
         hotkeyItem.target = self
         menu.addItem(hotkeyItem)
-        
+
+        // 符号转换设置
+        let symbolItem = NSMenuItem(title: "符号转换设置", action: #selector(showSymbolSettings), keyEquivalent: "")
+        symbolItem.target = self
+        menu.addItem(symbolItem)
+
         // 白名单设置
-        let whitelistItem = NSMenuItem(title: "白名单设置", action: #selector(showWhitelistSettings), keyEquivalent: "")
+        let whitelistItem = NSMenuItem(title: "应用白名单", action: #selector(showWhitelistSettings), keyEquivalent: "")
         whitelistItem.target = self
         menu.addItem(whitelistItem)
         
@@ -227,7 +233,11 @@ class StatusBarManager: NSObject {
     @objc private func showHotkeySettings() {
         delegate?.statusBarManagerDidRequestHotkeySettings(self)
     }
-    
+
+    @objc private func showSymbolSettings() {
+        delegate?.statusBarManagerDidRequestSymbolSettings(self)
+    }
+
     @objc private func showWhitelistSettings() {
         delegate?.statusBarManagerDidRequestWhitelistSettings(self)
     }
