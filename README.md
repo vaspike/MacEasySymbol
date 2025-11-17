@@ -18,9 +18,11 @@
 
 ## 应用概览
 
-<img width="478" alt="image" src="https://github.com/user-attachments/assets/b0bb8bb3-fc92-4365-b5a1-244c80e135c3" />
-<img width="480" alt="image" src="https://github.com/user-attachments/assets/0866f642-d542-4a6e-8a49-99c83e521df7" />
+<img width="185" height="288" alt="image" src="https://github.com/user-attachments/assets/34206b5f-38da-4186-917d-1692a93c6e82" />
+
 <img width="662" alt="image" src="https://github.com/user-attachments/assets/cd0ad805-6092-40b1-9a82-46f066d64f7c" />
+<img width="400" height="401" alt="image" src="https://github.com/user-attachments/assets/1ad531cb-1e52-48a5-bdd8-6f3a48718528" />
+
 <img width="700" height="632" alt="image" src="https://github.com/user-attachments/assets/a9f37c9b-1cf6-427d-9bbe-21e60677bd82" />
 <img width="600" height="732" alt="image" src="https://github.com/user-attachments/assets/f69091ea-7ebc-4ca8-8480-81baece6b50b" />
 
