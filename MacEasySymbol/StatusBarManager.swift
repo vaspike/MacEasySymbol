@@ -13,6 +13,7 @@ protocol StatusBarManagerDelegate: AnyObject {
     func statusBarManagerDidRequestHotkeySettings(_ manager: StatusBarManager)
     func statusBarManagerDidRequestWhitelistSettings(_ manager: StatusBarManager)
     func statusBarManagerDidRequestSymbolSettings(_ manager: StatusBarManager)
+    func statusBarManagerDidRequestToggleLoginItem(_ manager: StatusBarManager)
 }
 
 class StatusBarManager: NSObject {
@@ -27,9 +28,17 @@ class StatusBarManager: NSObject {
         }
     }
     
+    private var loginItemEnabled: Bool {
+        didSet {
+            updateMenu()
+        }
+    }
+    
     override init() {
         // 每次启动都强制设置为启用状态
         self.isInterventionEnabled = true
+        // 读取登录项状态
+        self.loginItemEnabled = LoginItemManager.shared.getCurrentStatus()
         super.init()
         // 确保UserDefaults也设置为启用状态
         UserDefaults.standard.set(true, forKey: "InterventionEnabled")
@@ -91,6 +100,11 @@ class StatusBarManager: NSObject {
         // 保存用户偏好
         UserDefaults.standard.set(isInterventionEnabled, forKey: "InterventionEnabled")
         DebugLogger.log("🔄 通过全局快捷键切换介入模式: \(isInterventionEnabled ? "启用" : "禁用")")
+    }
+    
+    // 更新登录项状态
+    func updateLoginItemStatus(_ enabled: Bool) {
+        loginItemEnabled = enabled
     }
     
     // MARK: - Private Methods
@@ -159,6 +173,14 @@ class StatusBarManager: NSObject {
         let helpItem = NSMenuItem(title: "符号转换说明", action: #selector(showHelp), keyEquivalent: "")
         helpItem.target = self
         menu.addItem(helpItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        // 开机自启
+        let loginItemTitle = loginItemEnabled ? "✓ 开机自启" : "开机自启"
+        let loginItemMenuItem = NSMenuItem(title: loginItemTitle, action: #selector(toggleLoginItem), keyEquivalent: "")
+        loginItemMenuItem.target = self
+        menu.addItem(loginItemMenuItem)
         
         menu.addItem(NSMenuItem.separator())
         
@@ -240,6 +262,10 @@ class StatusBarManager: NSObject {
 
     @objc private func showWhitelistSettings() {
         delegate?.statusBarManagerDidRequestWhitelistSettings(self)
+    }
+    
+    @objc private func toggleLoginItem() {
+        delegate?.statusBarManagerDidRequestToggleLoginItem(self)
     }
     
     @objc private func quitApp() {

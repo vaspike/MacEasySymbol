@@ -240,6 +240,20 @@ extension AppDelegate: StatusBarManagerDelegate {
         showWhitelistSettingsWindow()
     }
     
+    func statusBarManagerDidRequestToggleLoginItem(_ manager: StatusBarManager) {
+        let currentStatus = LoginItemManager.shared.getCurrentStatus()
+        let newStatus = !currentStatus
+        
+        let success = LoginItemManager.shared.setLoginItemEnabled(newStatus)
+        
+        if success {
+            statusBarManager?.updateLoginItemStatus(newStatus)
+            DebugLogger.log("🔄 开机自启已\(newStatus ? "启用" : "禁用")")
+        } else {
+            DebugLogger.logError("❌ 开机自启设置失败")
+        }
+    }
+    
     func statusBarManagerDidRequestQuit(_ manager: StatusBarManager) {
         // 确保在退出前完整清理资源
         cleanupResources()
