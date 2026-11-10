@@ -68,15 +68,14 @@ class LoginItemManager {
         
         do {
             if enabled {
-                let appPath = Bundle.main.bundlePath
-                guard !appPath.isEmpty else {
-                    DebugLogger.logError("❌ 无法获取应用路径")
+                guard let executablePath = Bundle.main.executablePath, !executablePath.isEmpty else {
+                    DebugLogger.logError("❌ 无法获取应用可执行文件路径")
                     return false
                 }
                 
                 let plistContent: [String: Any] = [
                     "Label": launchAgentFileName.replacingOccurrences(of: ".plist", with: ""),
-                    "ProgramArguments": [appPath],
+                    "ProgramArguments": [executablePath],
                     "RunAtLoad": true
                 ]
                 
