@@ -76,6 +76,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         return true
     }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // 即使用户之前持久隐藏了图标，主动再次启动应用也应恢复入口。
+        statusBarManager?.showStatusBar()
+        return false
+    }
     
     // MARK: - Private Methods
     

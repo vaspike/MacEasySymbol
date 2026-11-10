@@ -21,6 +21,13 @@ class StatusBarManager: NSObject {
     weak var delegate: StatusBarManagerDelegate?
     
     private var statusItem: NSStatusItem?
+    private let statusItemHiddenKey = "StatusItemHidden"
+    private let hideExplanationShownKey = "StatusItemHideExplanationShown"
+
+    private var isStatusItemHidden: Bool {
+        return UserDefaults.standard.bool(forKey: statusItemHiddenKey)
+    }
+
     private var isInterventionEnabled: Bool {
         didSet {
             updateStatusBarIcon()
@@ -53,6 +60,11 @@ class StatusBarManager: NSObject {
     // MARK: - Public Methods
     
     func setupStatusBar() {
+        guard !isStatusItemHidden else {
+            DebugLogger.log("⏭️ 菜单栏图标保持隐藏；再次启动应用可恢复显示")
+            return
+        }
+
         // 如果已经存在，先清理
         if statusItem != nil {
             cleanup()
@@ -68,6 +80,19 @@ class StatusBarManager: NSObject {
         
         updateMenu()
         DebugLogger.log("✅ 状态栏设置完成")
+    }
+
+    // 用户再次启动应用时恢复菜单栏图标。
+    func showStatusBar() {
+        UserDefaults.standard.set(false, forKey: statusItemHiddenKey)
+        setupStatusBar()
+        DebugLogger.log("✅ 菜单栏图标已恢复显示")
+    }
+
+    private func hideStatusBar() {
+        UserDefaults.standard.set(true, forKey: statusItemHiddenKey)
+        cleanup()
+        DebugLogger.log("🙈 菜单栏图标已隐藏，后台功能保持运行")
     }
     
     // 添加清理方法
@@ -181,6 +206,10 @@ class StatusBarManager: NSObject {
         let loginItemMenuItem = NSMenuItem(title: loginItemTitle, action: #selector(toggleLoginItem), keyEquivalent: "")
         loginItemMenuItem.target = self
         menu.addItem(loginItemMenuItem)
+
+        let hideItem = NSMenuItem(title: "隐藏菜单栏图标", action: #selector(hideMenuBarIcon), keyEquivalent: "")
+        hideItem.target = self
+        menu.addItem(hideItem)
         
         menu.addItem(NSMenuItem.separator())
         
@@ -267,6 +296,25 @@ class StatusBarManager: NSObject {
     @objc private func toggleLoginItem() {
         delegate?.statusBarManagerDidRequestToggleLoginItem(self)
     }
+
+    @objc private func hideMenuBarIcon() {
+        let defaults = UserDefaults.standard
+
+        if !defaults.bool(forKey: hideExplanationShownKey) {
+            let alert = NSAlert()
+            alert.messageText = "隐藏菜单栏图标？"
+            alert.informativeText = "隐藏后，符号转换、白名单和全局快捷键仍会正常工作。\n\n如需重新显示图标，请再次启动 MacEasySymbol。"
+            alert.addButton(withTitle: "隐藏")
+            alert.addButton(withTitle: "取消")
+            alert.alertStyle = .informational
+
+            NSApp.activate(ignoringOtherApps: true)
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            defaults.set(true, forKey: hideExplanationShownKey)
+        }
+
+        hideStatusBar()
+    }
     
     @objc private func quitApp() {
         delegate?.statusBarManagerDidRequestQuit(self)
@@ -304,6 +352,7 @@ class StatusBarManager: NSObject {
         var status = "StatusBarManager 状态:\n"
         status += "- isInterventionEnabled: \(isInterventionEnabled)\n"
         status += "- statusItem: \(statusItem != nil ? "存在" : "不存在")\n"
+        status += "- 隐藏偏好: \(isStatusItemHidden)\n"
         status += "- menu: \(statusItem?.menu != nil ? "存在" : "不存在")\n"
         status += "- button: \(statusItem?.button != nil ? "存在" : "不存在")"
         return status
