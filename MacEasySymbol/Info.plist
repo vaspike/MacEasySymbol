@@ -28,9 +28,5 @@
 	<string>MacEasySymbol 需要监听键盘事件以提供符号转换功能。</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NSSupportsAutomaticTermination</key>
-	<true/>
-	<key>NSSupportsSuddenTermination</key>
-	<true/>
 </dict>
 </plist>

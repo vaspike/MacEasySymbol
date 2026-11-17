@@ -129,7 +129,17 @@ class KeyboardEventMonitor {
         guard isCurrentlyMonitoring else {
             return Unmanaged.passRetained(event)
         }
-        
+
+        // 系统会因超时（进程被挂起/App Nap、事件处理过慢）或用户输入而禁用 tap。
+        // 必须在此立即重新启用，否则转换会静默失效且永不恢复。
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let eventTap = eventTap, CFMachPortIsValid(eventTap) {
+                CGEvent.tapEnable(tap: eventTap, enable: true)
+                DebugLogger.log("⚠️ 事件tap被系统禁用（\(type == .tapDisabledByTimeout ? "超时" : "用户输入")），已自动重新启用")
+            }
+            return Unmanaged.passRetained(event)
+        }
+
         // 只处理按键按下事件
         guard type == .keyDown else {
             return Unmanaged.passRetained(event)

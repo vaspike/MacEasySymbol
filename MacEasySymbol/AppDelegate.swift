@@ -20,7 +20,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
     private var whitelistSettingsWindow: WhitelistSettingsWindow?
     private var symbolSettingsWindow: SymbolSettingsWindow?
 
+    // 常驻保活活动，防止隐藏菜单栏图标后被系统挂起/App Nap/自动终止
+    private var backgroundActivity: NSObjectProtocol?
+
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        // 常驻保活：本应用是后台键盘工具，任何时候都不应被系统自动终止
+        enableBackgroundKeepAlive()
+
         // 设置为Agent应用，隐藏Dock图标
         NSApp.setActivationPolicy(.accessory)
         
@@ -128,6 +134,33 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
         keyboardMonitor?.startMonitoring()
     }
     
+    // MARK: - 常驻保活
+
+    // 隐藏菜单栏图标后，应用成为完全不可见的 LSUIElement 进程。
+    // 必须显式禁止自动/突然终止，并持有 activity 防止 App Nap/挂起，
+    // 否则系统会在空闲或内存压力时静默回收进程（2.6.0 隐藏图标后进程消失的根因）。
+    private func enableBackgroundKeepAlive() {
+        let processInfo = ProcessInfo.processInfo
+        processInfo.disableAutomaticTermination("键盘事件监听需要常驻后台")
+        processInfo.disableSuddenTermination()
+        backgroundActivity = processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep],
+            reason: "监听键盘事件并进行符号转换"
+        )
+        DebugLogger.log("🛡️ 常驻保活已启用：禁止自动/突然终止，防止 App Nap")
+    }
+
+    private func disableBackgroundKeepAlive() {
+        let processInfo = ProcessInfo.processInfo
+        if let activity = backgroundActivity {
+            processInfo.endActivity(activity)
+            backgroundActivity = nil
+        }
+        processInfo.enableAutomaticTermination("键盘事件监听需要常驻后台")
+        processInfo.enableSuddenTermination()
+        DebugLogger.log("🛡️ 常驻保活已解除")
+    }
+
     // 完整的资源清理方法
     private func cleanupResources() {
         DebugLogger.log("🧹 开始清理应用资源...")
@@ -185,7 +218,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, PermissionManagerDelegate {
             // 在调试模式下执行额外的清理
         }
         #endif
-        
+
+        // 9. 解除常驻保活（仅在真正退出/重启时走到这里）
+        disableBackgroundKeepAlive()
+
         DebugLogger.log("✅ 应用资源清理完成")
     }
     
